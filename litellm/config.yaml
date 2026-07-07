@@ -3,27 +3,68 @@
 # Why a gateway at all? Everyone in the workshop shares ONE AWS credential.
 # LiteLLM keeps that credential in exactly one place and hands every client
 # (LibreChat, curl, your own scripts) a plain OpenAI-style API with a master
-# key we control — plus rate limiting and spend tracking if we need it.
+# key we control -- plus rate limiting and spend tracking if we need it.
 #
-# NOTE for instructors: the Bedrock model IDs below must match what the
-# workshop AWS account has enabled. Adjust during prep (`aws bedrock
-# list-foundation-models`); cross-region inference profiles use a `us.` or
-# `eu.` prefix.
+# Model IDs below are verified against the workshop account (`task
+# bedrock:check`). Note the two Bedrock invocation styles:
+#   - Claude Sonnet models and DeepSeek-R1 are INFERENCE_PROFILE-only on Bedrock
+#     -- no on-demand option, so they MUST use the `us.` cross-region profile ID.
+#   - gpt-oss models are ON_DEMAND, invoked by their bare foundation-model ID.
+# Anthropic models also require the account's Anthropic use-case form to be
+# submitted (Bedrock console) -- otherwise invokes 404 with "use case details
+# have not been submitted", independent of IAM.
+#
+# `tools:` marks which models can drive the Step-4 MCP tools. Reasoning models
+# (deepseek) are for reasoning *over* query results, not for driving the tool
+# loop -- see docs/04-mcp-server.md.
 
 model_list:
-  - model_name: claude-sonnet
+  # tools: yes  -- primary MCP/Trino tool driver. Claude Sonnet 5
+  #                (inference-profile only).
+  - model_name: claude-sonnet-5
     litellm_params:
-      model: bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+      model: bedrock/us.anthropic.claude-sonnet-5
       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
       aws_region_name: os.environ/AWS_REGION_NAME
 
-  - model_name: claude-haiku
+  # tools: yes  -- alternate tool driver. Claude Sonnet 4.6
+  #                (inference-profile only).
+  - model_name: claude-sonnet-4-6
     litellm_params:
-      model: bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0
+      model: bedrock/us.anthropic.claude-sonnet-4-6
       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
       aws_region_name: os.environ/AWS_REGION_NAME
+
+  # tools: no   -- reasoning model; interpret results, don't call tools.
+  #                inference-profile only.
+  - model_name: deepseek-r1
+    litellm_params:
+      model: bedrock/us.deepseek.r1-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+  # tools: partial -- present but less proven via Bedrock+MCP; try, don't rely.
+  #                   on-demand foundation model (no `us.` profile prefix).
+  - model_name: gpt-oss-120b
+    litellm_params:
+      model: bedrock/openai.gpt-oss-120b-1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+  # tools: partial
+  - model_name: gpt-oss-20b
+    litellm_params:
+      model: bedrock/openai.gpt-oss-20b-1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+  # Other families (claude-haiku, amazon.nova-*, meta.llama4-*) are intentionally
+  # not exposed for the workshop -- re-add a block like the above to enable one.
 
 litellm_settings:
   drop_params: true
