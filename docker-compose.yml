@@ -99,6 +99,8 @@ services:
     build: ./superset
     ports:
       - "8088:8088"
+    volumes:
+      - superset-home:/app/superset_home   # persist metadata (dashboards, etc.)
     depends_on:
       - trino
 
@@ -177,3 +179,4 @@ volumes:
   mongo-data:
   garage-meta:
   garage-data:
+  superset-home:

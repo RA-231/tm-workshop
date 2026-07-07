@@ -47,6 +47,11 @@ tasks:
     cmds:
       - docker compose up -d --build trino superset
 
+  superset:dataset:
+    desc: (Re)register the telemetry.readings dataset in Superset
+    cmds:
+      - docker compose exec -T superset python /app/register_dataset.py
+
   trino:
     desc: Open an interactive Trino SQL session
     interactive: true
