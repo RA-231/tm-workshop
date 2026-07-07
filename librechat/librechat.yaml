@@ -16,9 +16,17 @@ mcpServers:
     url: http://mcp-server:8000/mcp
     timeout: 30000
 
+# LibreChat blocks MCP server URLs that resolve to private IPs (an SSRF guard)
+# unless their domain is allow-listed here. Our server is reached at the compose
+# service name `mcp-server` (a private-network address), so allow it. The bare
+# hostname matches http://mcp-server:8000 regardless of port.
+mcpSettings:
+  allowedDomains:
+    - "mcp-server"
+
 interface:
-  # Keep the UI focused for the workshop
-  agents: false
+  # Agents on: the Step-5 capstone builds a telemetry anomaly-analysis agent.
+  agents: true
   prompts: false
   bookmarks: false
 
@@ -28,8 +36,10 @@ endpoints:
       apiKey: "${LITELLM_MASTER_KEY}"
       baseURL: "http://litellm:4000/v1"
       models:
-        default: ["claude-sonnet", "claude-haiku"]
+        # fetch: true auto-discovers whatever LiteLLM exposes, so this list
+        # just seeds the picker order. Keep it in sync with litellm/config.yaml.
+        default: ["claude-sonnet-5", "claude-sonnet-4-6", "deepseek-r1", "gpt-oss-120b", "gpt-oss-20b"]
         fetch: true
       titleConvo: true
-      titleModel: "claude-haiku"
-      modelDisplayLabel: "Claude (Bedrock)"
+      titleModel: "claude-sonnet-5"
+      modelDisplayLabel: "Bedrock (LiteLLM)"
