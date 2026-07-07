@@ -41,7 +41,7 @@ CREATE CATALOG polaris WITH (
     'client.region' = 'garage'
 );
 
-CREATE DATABASE IF NOT EXISTS polaris.telemetry;
+CREATE DATABASE IF NOT EXISTS polaris.esa_adb;
 
 -- 3. The destination table. Partitioned by month (a 'yyyy-MM' string): the
 --    telemetry spans years, so monthly partitions let engines prune big chunks
@@ -49,8 +49,8 @@ CREATE DATABASE IF NOT EXISTS polaris.telemetry;
 --    daily partitions. The smaller Parquet row group keeps the streaming
 --    writer's memory bounded when many partitions are open at once.
 -- DROP + recreate so re-running the load is idempotent (never appends dupes).
-DROP TABLE IF EXISTS polaris.telemetry.readings;
-CREATE TABLE polaris.telemetry.readings (
+DROP TABLE IF EXISTS polaris.esa_adb.readings;
+CREATE TABLE polaris.esa_adb.readings (
     channel  STRING,
     ts       TIMESTAMP(3),
     ts_month STRING,
@@ -63,7 +63,7 @@ CREATE TABLE polaris.telemetry.readings (
 -- 4. Connect them. Reads all the JSON, writes Iceberg, commits per checkpoint.
 --    ts_month is just the first 7 characters of the timestamp string, e.g.
 --    "2000-01-01 12:00:00.000" -> "2000-01".
-INSERT INTO polaris.telemetry.readings
+INSERT INTO polaris.esa_adb.readings
 SELECT
     channel,
     TO_TIMESTAMP(ts, 'yyyy-MM-dd HH:mm:ss.SSS') AS ts,

@@ -47,7 +47,7 @@ tasks:
   trino:views:
     desc: Create the Trino views (enriched readings, anomalies, labeled_readings)
     cmds:
-      - docker compose exec -T trino trino --catalog iceberg --schema telemetry -f /etc/trino/views.sql
+      - docker compose exec -T trino trino --catalog iceberg --schema esa_adb -f /etc/trino/views.sql
 
   up:query:
     desc: Start the query stack (Trino, Superset)
@@ -55,7 +55,7 @@ tasks:
       - docker compose up -d --build trino superset
 
   superset:dataset:
-    desc: (Re)register the telemetry.readings dataset in Superset
+    desc: (Re)register the esa_adb.readings dataset in Superset
     cmds:
       - docker compose exec -T superset python /app/register_dataset.py
 
@@ -63,13 +63,18 @@ tasks:
     desc: Open an interactive Trino SQL session
     interactive: true
     cmds:
-      - docker compose exec trino trino --catalog iceberg --schema telemetry
+      - docker compose exec trino trino --catalog iceberg --schema esa_adb
 
   rowcount:
     desc: Count the rows ingested so far
     cmds:
       - docker compose up -d trino
-      - docker compose exec -T trino trino --execute "SELECT count(*) AS rows FROM iceberg.telemetry.readings"
+      - docker compose exec -T trino trino --execute "SELECT count(*) AS rows FROM iceberg.esa_adb.readings"
+
+  bedrock:check:
+    desc: Validate the AWS credential + config model IDs against Bedrock (read-only)
+    cmds:
+      - bash scripts/bedrock-check.sh
 
   up:chat:
     desc: Start the chat stack (LiteLLM, MongoDB, LibreChat)

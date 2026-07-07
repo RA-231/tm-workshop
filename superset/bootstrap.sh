@@ -18,7 +18,7 @@ superset set-database-uri \
   --database_name "Trino (Iceberg telemetry)" \
   --uri "trino://trino@trino:8080/iceberg" || true
 
-# Register the telemetry.readings table as a dataset (best-effort: skips
+# Register the esa_adb.readings table as a dataset (best-effort: skips
 # cleanly if Trino/the table isn't up yet). Re-run with `task superset:dataset`.
 python /app/register_dataset.py || true
 

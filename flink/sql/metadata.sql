@@ -39,24 +39,24 @@ CREATE CATALOG polaris WITH (
     'client.region' = 'garage'
 );
 
-CREATE DATABASE IF NOT EXISTS polaris.telemetry;
+CREATE DATABASE IF NOT EXISTS polaris.esa_adb;
 
-DROP TABLE IF EXISTS polaris.telemetry.channels;
-CREATE TABLE polaris.telemetry.channels (
+DROP TABLE IF EXISTS polaris.esa_adb.channels;
+CREATE TABLE polaris.esa_adb.channels (
     channel STRING, subsystem STRING, physical_unit STRING,
     group_name STRING, target STRING, categorical STRING
 ) WITH ('format-version' = '2');
-INSERT INTO polaris.telemetry.channels SELECT * FROM channels_in;
+INSERT INTO polaris.esa_adb.channels SELECT * FROM channels_in;
 
-DROP TABLE IF EXISTS polaris.telemetry.labels;
-CREATE TABLE polaris.telemetry.labels (
+DROP TABLE IF EXISTS polaris.esa_adb.labels;
+CREATE TABLE polaris.esa_adb.labels (
     id STRING, channel STRING, start_time STRING, end_time STRING
 ) WITH ('format-version' = '2');
-INSERT INTO polaris.telemetry.labels SELECT * FROM labels_in;
+INSERT INTO polaris.esa_adb.labels SELECT * FROM labels_in;
 
-DROP TABLE IF EXISTS polaris.telemetry.anomaly_types;
-CREATE TABLE polaris.telemetry.anomaly_types (
+DROP TABLE IF EXISTS polaris.esa_adb.anomaly_types;
+CREATE TABLE polaris.esa_adb.anomaly_types (
     id STRING, class_name STRING, subclass STRING, category STRING,
     dimensionality STRING, locality STRING, length STRING
 ) WITH ('format-version' = '2');
-INSERT INTO polaris.telemetry.anomaly_types SELECT * FROM anomaly_types_in;
+INSERT INTO polaris.esa_adb.anomaly_types SELECT * FROM anomaly_types_in;

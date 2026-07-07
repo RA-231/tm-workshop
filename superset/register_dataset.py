@@ -1,4 +1,4 @@
-"""Register the Iceberg `telemetry.readings` table as a Superset dataset.
+"""Register the Iceberg `esa_adb.readings` table as a Superset dataset.
 
 Runs inside the Superset application context (so it can write straight to the
 metadata DB) rather than through the REST API — which means it works at
@@ -18,7 +18,7 @@ except Exception:  # pragma: no cover - import path fallback across versions
     from superset import create_app
 
 DB_NAME = "Trino (Iceberg telemetry)"
-SCHEMA = "telemetry"
+SCHEMA = "esa_adb"
 TABLE = "readings"
 
 app = create_app()
