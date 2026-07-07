@@ -1,0 +1,108 @@
+# Step 1 — Ingesting Data into Iceberg with Flink
+
+Goal: raw ESA telemetry files → Flink → an Iceberg table you can query. Along
+the way: what a table format actually *is*, and why the catalog matters.
+
+## What Iceberg actually is
+
+Strip away the buzzwords and Iceberg is a **spec for keeping track of files**.
+A table is a set of objects in the warehouse — here, the `warehouse` bucket in
+Garage:
+
+```
+s3://warehouse/telemetry/readings/
+├── metadata/
+│   ├── v3.metadata.json        ← table schema, partition spec, snapshot list
+│   ├── snap-8231...avro        ← manifest list: one per snapshot
+│   └── 92f1...-m0.avro         ← manifests: which data files, with stats
+└── data/
+    └── ts_month=2000-03/
+        └── 00000-0-...parquet  ← the actual rows
+```
+
+Reading a table means: find the current `metadata.json`, follow it to a
+snapshot, follow the snapshot to manifests, and read only the data files that
+survive your filters. **Writing** means: write new Parquet files, then write
+new metadata that includes them, then atomically swap the "current metadata"
+pointer. Readers never see a half-finished write — that pointer swap is the
+commit.
+
+Two consequences worth pausing on:
+
+1. **Snapshots are free history.** Old metadata still describes the old file
+   set — that's time travel and rollback.
+2. **Somebody has to own the pointer.** The atomic swap needs a coordinator
+   that all writers and readers agree on. That's the catalog.
+
+## The role of Apache Polaris
+
+Polaris is an implementation of the **Iceberg REST catalog** protocol. It's
+the small-but-critical service that maps `telemetry.readings` → "current
+metadata file is `v3.metadata.json`" and performs the atomic swap on commit.
+
+Because Flink (writer) and Trino (reader, Step 2) both speak the REST catalog
+protocol to the *same* Polaris, they agree on what the table is at every
+moment — different engines, zero coordination between them. That handoff is
+the whole reason lakehouse architectures work.
+
+> In production, Polaris also handles access control and can vend scoped,
+> temporary storage credentials to each engine. We skip that: the warehouse
+> lives in **Garage**, a lightweight S3-compatible object store, and every
+> engine uses the same static key. One less moving part between you and the
+> data — and it means the warehouse is real S3 object storage, exactly like a
+> cloud deployment, just running in a container on your laptop.
+
+## Why Flink?
+
+Flink is a stream *and* batch processing engine. Our job reads every prepared
+telemetry file and *streams* the rows into Iceberg: the sink commits a new
+snapshot at each checkpoint, so the table grows in visible increments while the
+job runs. The file source is bounded — once every file has been read the job
+finishes on its own. The exact same SQL pointed at a live feed instead of a
+directory would simply never end. That's the point: batch is just streaming
+over a finite source.
+
+The ESA channels ship as pickled pandas DataFrames, which Flink can't read
+directly, so there's a one-time prep step (`task data:prepare`) that converts
+each channel to newline-delimited JSON under `data/prepared/`. Flink's
+filesystem connector reads that directory.
+
+## Do it
+
+```bash
+task up:ingest        # garage, polaris, flink — and init the S3 bucket
+task data:prepare     # pickled channels -> JSON under data/prepared/
+task catalog:create   # create the 'workshop' catalog in Polaris
+task flink:job        # run the ingest job (Flink SQL) — blocks until loaded
+```
+
+While `flink:job` runs:
+
+- **Flink UI** [http://localhost:8081](http://localhost:8081) — watch the batch
+  job read the files and write to the sink.
+- **Look at the objects.** The metadata and Parquet files land in Garage:
+
+  ```bash
+  docker compose exec garage /garage bucket info warehouse
+  ```
+
+  This is the whole trick, in plain sight.
+
+The ingest job is ~40 lines of Flink SQL — open
+[`flink/sql/ingest.sql`](../flink/sql/ingest.sql). One statement defines the
+prepared JSON as a table, one defines the Iceberg catalog via Polaris, and one
+`INSERT INTO ... SELECT` connects them.
+
+## Checkpoint
+
+When `task flink:job` returns, the load is done. Confirm the rows are there:
+
+```bash
+task rowcount
+```
+
+Stuck? `git checkout step-1` gives you the repo state, and
+`task checkpoint:restore -- step-1` fetches a pre-built warehouse (then re-run
+`task catalog:create && task flink:job` so Polaris re-registers the table).
+
+Next: [Step 2 — Querying with Trino and Superset](02-query.md)
