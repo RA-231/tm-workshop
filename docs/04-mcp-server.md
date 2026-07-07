@@ -68,11 +68,15 @@ enable the **telemetry** MCP server in the tools menu.
 
 Ask Claude things that require multi-step tool use:
 
-- *"What tables are available, and what does the readings table look like?"*
+- *"What tables and views are available, and what does the readings table
+  look like?"*
 - *"Summarize channel_41. Anything unusual about its value range?"*
 - *"Which channel has the most samples in March 2000? Show a monthly count
   for that channel across the whole year."*
-- *"Compare the mean value of channel_9 before and after 2001-06-01."*
+- *"Using labeled_readings, how many anomaly windows does channel_41 have, and
+  what's the average value inside anomalies vs outside?"*
+- *"Pick one labeled anomaly on channel_41 and show me the readings in the hour
+  around it."*
 
 Watch the tool-call panel in LibreChat: you'll see the model list tables,
 describe schemas, and iterate on SQL — the same workflow a human analyst
@@ -82,10 +86,12 @@ follows.
 
 1. **Add a tool** `list_channels()` that returns distinct channel names and
    their sample counts. Restart the server and see the model start using it.
-2. **Add an anomaly tool.** The dataset ships with labeled anomalies
-   (`labels.csv`). Load them into a table (Trino can `INSERT` into Iceberg!)
-   and add `anomalies_for(channel)`. Now ask Claude to *investigate* an
-   anomaly: what did the channel do in the hour around it?
+2. **Add an anomaly tool.** The `labels` and `anomaly_types` tables and the
+   `labeled_readings` view are already in the warehouse (Step 2). Add an
+   `anomalies_for(channel)` tool that returns a channel's anomaly windows and
+   their categories, so the model reaches for it directly instead of writing
+   the join each time. Then ask Claude to *investigate* an anomaly: what did
+   the channel do in the hour around it?
 3. **Break it on purpose.** Remove the read-only check from `query` and ask
    the model to clean up the warehouse. (Kidding. Don't. But do read the
    check and think about what else a production server would need: row-level

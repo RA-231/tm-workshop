@@ -77,9 +77,9 @@ step also works against a full mission if you re-run it at home
 
 - Everything runs in Docker Compose. `task up` and go.
 - No authentication anywhere it can be avoided. This is a workshop, not prod.
-- If you fall behind, every step has a git tag (`step-1` … `step-4`).
-  `git checkout step-2` puts the repo exactly where it should be at the end
-  of Step 2. Checkpoint data is downloadable too, so you never have to wait
-  for a slow ingest to catch up.
+- If you fall behind on the ingest, you don't have to wait for it:
+  `task checkpoint:restore -- <name>` drops in a pre-built warehouse (the
+  Iceberg files *and* the Polaris catalog), so you can jump straight to
+  querying. Your instructor will point you at the checkpoint names.
 
 Next: [Step 1 — Ingesting data into Iceberg](01-ingest.md)

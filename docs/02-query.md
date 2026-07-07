@@ -107,18 +107,21 @@ parses them into plain timestamps that line up with `readings.ts`.)
 task up:query    # starts Trino + Superset — http://localhost:8088 (admin / admin)
 ```
 
-The stack pre-registers the Trino connection (SQLAlchemy URI
-`trino://trino@trino:8080/iceberg`). If you need to add it by hand:
-**Settings → Database Connections → + Database → Trino** and paste that URI.
+The stack comes pre-wired: the Trino connection (SQLAlchemy URI
+`trino://trino@trino:8080/iceberg`) *and* the `readings` dataset are already
+registered, so you can chart immediately. (Adding one by hand, if you ever
+need to, is **Settings → Database Connections** and **Datasets → + Dataset**.)
 
 Build a first chart:
 
 1. **SQL Lab** — run one of the queries above to confirm connectivity.
-2. **Datasets → + Dataset** — pick `iceberg` / `telemetry` / `readings`.
-3. Create a **chart**: time-series line, X = `ts` (day grain), Y = `AVG(value)`,
-   dimension = `channel`, filter to 3–4 channels so it stays readable.
-4. Add it to a dashboard, add a second chart (row counts per channel, big
-   number of total samples — your call).
+2. Create a **chart** on the pre-registered `readings` dataset: time-series
+   line, X = `ts` (day grain), Y = `AVG(value)`, dimension = `channel`, filter
+   to 3–4 channels so it stays readable.
+3. Add `labeled_readings` as a dataset (**Datasets → + Dataset** →
+   `iceberg` / `telemetry` / `labeled_readings`) and chart `channel_41` with
+   `is_anomaly` as the color dimension — the anomalies light up.
+4. Add both to a dashboard.
 
 Superset is issuing the same SQL you wrote by hand — check **SQL Lab → Query
 History** to see exactly what each chart ran, and notice the planner doing

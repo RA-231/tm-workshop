@@ -107,9 +107,10 @@ When `task flink:job` returns, the load is done. Confirm the rows are there:
 task rowcount
 ```
 
-Stuck? `git checkout step-1` gives you the repo state, and
-`task checkpoint:restore -- step-1` fetches a pre-built warehouse — both the
+Stuck, or don't want to wait for the full ingest?
+`task checkpoint:restore -- <name>` drops in a pre-built warehouse — both the
 Iceberg files and the Polaris catalog that points at them — so you can start
-the stack and query right away, no re-ingest needed.
+the stack and query right away, no re-ingest needed. Ask your instructor for
+the checkpoint name.
 
 Next: [Step 2 — Querying with Trino and Superset](02-query.md)
