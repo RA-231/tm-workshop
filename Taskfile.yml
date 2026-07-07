@@ -39,9 +39,15 @@ tasks:
       - bash scripts/create-catalog.sh
 
   flink:job:
-    desc: Run the JSON → Iceberg ingest job (Flink SQL)
+    desc: Load readings + metadata tables into Iceberg (Flink SQL)
     cmds:
       - docker compose exec -T flink-jobmanager bin/sql-client.sh -f /opt/flink/sql/ingest.sql
+      - docker compose exec -T flink-jobmanager bin/sql-client.sh -f /opt/flink/sql/metadata.sql
+
+  trino:views:
+    desc: Create the Trino views (enriched readings, anomalies, labeled_readings)
+    cmds:
+      - docker compose exec -T trino trino --catalog iceberg --schema telemetry -f /etc/trino/views.sql
 
   up:query:
     desc: Start the query stack (Trino, Superset)

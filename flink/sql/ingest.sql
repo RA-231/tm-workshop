@@ -19,7 +19,7 @@ CREATE TABLE telemetry_in (
     `value` DOUBLE
 ) WITH (
     'connector' = 'filesystem',
-    'path' = 'file:///data/prepared',
+    'path' = 'file:///data/prepared/channels',
     'format' = 'json'
 );
 
@@ -48,7 +48,9 @@ CREATE DATABASE IF NOT EXISTS polaris.telemetry;
 --    of the table when you filter on time, without creating thousands of tiny
 --    daily partitions. The smaller Parquet row group keeps the streaming
 --    writer's memory bounded when many partitions are open at once.
-CREATE TABLE IF NOT EXISTS polaris.telemetry.readings (
+-- DROP + recreate so re-running the load is idempotent (never appends dupes).
+DROP TABLE IF EXISTS polaris.telemetry.readings;
+CREATE TABLE polaris.telemetry.readings (
     channel  STRING,
     ts       TIMESTAMP(3),
     ts_month STRING,

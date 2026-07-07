@@ -64,8 +64,14 @@ over a finite source.
 
 The ESA channels ship as pickled pandas DataFrames, which Flink can't read
 directly, so there's a one-time prep step (`task data:prepare`) that converts
-each channel to newline-delimited JSON under `data/prepared/`. Flink's
+each channel to newline-delimited JSON under `data/prepared/channels/`. Flink's
 filesystem connector reads that directory.
+
+The same prep step also converts the dataset's **metadata** — the channel
+catalog, the labeled anomaly windows, and the anomaly taxonomy — into
+`data/prepared/meta/`. `task flink:job` loads those as three small dimension
+tables (`channels`, `labels`, `anomaly_types`) alongside `readings`. They're
+what make Step 2's views and Step 4's anomaly investigation possible.
 
 ## Do it
 

@@ -66,6 +66,41 @@ SELECT count(*) FROM iceberg.telemetry.readings
 FOR VERSION AS OF <snapshot_id>;
 ```
 
+## Views: enrich once, reuse everywhere
+
+`readings` is a bare fact table — `channel, ts, value`. Step 1 also loaded
+three dimension tables: `channels` (what each channel measures), `labels` (the
+ESA-labeled anomaly windows), and `anomaly_types` (the taxonomy). Views let us
+join those once and give everyone — SQL Lab, Superset, and the Step 4 MCP
+server — a richer table to point at.
+
+```bash
+task trino:views    # creates the views below
+```
+
+Open [`trino/views.sql`](../trino/views.sql) — each is a plain `CREATE VIEW`.
+The interesting ones:
+
+```sql
+-- readings + their channel metadata
+SELECT channel, subsystem, physical_unit, avg(value) AS mean
+FROM iceberg.telemetry.readings_enriched
+GROUP BY channel, subsystem, physical_unit;
+
+-- the payoff: every reading tagged with whether it's inside a labeled anomaly
+SELECT ts, value, is_anomaly, anomaly_category
+FROM iceberg.telemetry.labeled_readings
+WHERE channel = 'channel_41' AND is_anomaly
+ORDER BY ts
+LIMIT 20;
+```
+
+`labeled_readings` is a range join — each reading matched to any anomaly window
+covering its timestamp. That single view is what powers "color the anomalies"
+in a Superset chart and "investigate the anomalies on channel_41" for Claude in
+Step 4. (The label timestamps are ISO-8601 UTC strings; the `anomalies` view
+parses them into plain timestamps that line up with `readings.ts`.)
+
 ## Superset
 
 ```bash

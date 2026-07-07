@@ -85,6 +85,9 @@ services:
       # runs production-readiness checks and aborts on the insecure FILE storage
       # type, so — unlike the old in-memory setup — we must NOT enable FILE.
       'polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES"': '["S3"]'
+      # Let DROP TABLE purge data files, so re-running the (idempotent) Flink
+      # load scripts can drop-and-recreate tables instead of erroring.
+      'polaris.features."DROP_WITH_PURGE_ENABLED"': "true"
       # Polaris writes table metadata itself, so it needs the S3 key too.
       AWS_REGION: garage
       AWS_ACCESS_KEY_ID: GK31c2f218a2e44f485b94239e
@@ -145,6 +148,7 @@ services:
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
     volumes:
       - ./trino/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties:ro
+      - ./trino/views.sql:/etc/trino/views.sql:ro
     depends_on:
       - polaris
       - garage
