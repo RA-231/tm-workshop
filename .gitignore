@@ -13,5 +13,11 @@ __pycache__/
 *.pyc
 .venv/
 
+# Docs site (Starlight) — build artifacts and pages generated from docs/
+site/node_modules/
+site/dist/
+site/.astro/
+site/src/content/docs/*.md
+
 # OS noise
 .DS_Store

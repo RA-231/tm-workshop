@@ -15,6 +15,12 @@ tasks:
     cmds:
       - python3 scripts/fetch_esa_adb.py {{.CLI_ARGS | default "small"}}
 
+  up:docs:
+    desc: Build + serve the docs site and service landing page (http://localhost:4321)
+    cmds:
+      - docker compose up -d --build docs
+      - echo "docs + service links -> http://localhost:4321"
+
   up:ingest:
     desc: Start the ingest stack (Garage, Polaris, Flink)
     cmds:

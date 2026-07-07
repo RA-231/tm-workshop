@@ -7,6 +7,16 @@
 name: tm-tutorial
 
 services:
+  # ── The workshop front door ───────────────────────────────────────────────
+  # A Starlight docs site: the landing page links to every service below, and
+  # the workshop guide (generated from docs/) is browsable at /overview etc.
+  docs:
+    build:
+      context: .              # repo root, so the build can read docs/
+      dockerfile: site/Dockerfile
+    ports:
+      - "4321:80"
+
   # ── Step 1: ingest ────────────────────────────────────────────────────────
   garage:
     image: dxflrs/garage:v2.3.0

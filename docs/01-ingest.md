@@ -78,8 +78,8 @@ task flink:job        # run the ingest job (Flink SQL) — blocks until loaded
 
 While `flink:job` runs:
 
-- **Flink UI** [http://localhost:8081](http://localhost:8081) — watch the batch
-  job read the files and write to the sink.
+- **Flink UI** [http://localhost:8081](http://localhost:8081) — watch the job
+  read the files and write to the sink, one snapshot per checkpoint.
 - **Look at the objects.** The metadata and Parquet files land in Garage:
 
   ```bash

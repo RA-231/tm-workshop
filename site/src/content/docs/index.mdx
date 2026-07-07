@@ -1,0 +1,58 @@
+---
+title: Space Telemetry, End to End
+description: The front door for the Space Summit 2026 telemetry workshop — links to every running service and the workshop guide.
+template: splash
+hero:
+  tagline: Ingest, store, query, and talk to satellite telemetry with open source tools.
+  actions:
+    - text: Start the workshop
+      link: /overview/
+      icon: right-arrow
+      variant: primary
+    - text: ESA dataset
+      link: https://zenodo.org/records/15237121
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Dashboards & UIs
+
+Open these in your browser. Each appears once you've started the stack for its
+step (`task up:ingest`, `task up:query`, `task up:chat`).
+
+<CardGrid>
+  <LinkCard title="Flink" href="http://localhost:8081" description="Job dashboard — watch the ingest job read files and commit Iceberg snapshots. (task up:ingest)" />
+  <LinkCard title="Trino" href="http://localhost:8080/ui/" description="Query engine UI — inspect query plans, splits, and bytes read. (task up:query)" />
+  <LinkCard title="Superset" href="http://localhost:8088" description="Dashboards and SQL Lab. Log in with admin / admin. (task up:query)" />
+  <LinkCard title="LibreChat" href="http://localhost:3080" description="Chat UI wired to Claude on Bedrock. Register any account. (task up:chat)" />
+</CardGrid>
+
+## APIs & endpoints
+
+Not browser UIs — these are the service endpoints the stack talks to.
+
+<CardGrid>
+  <LinkCard title="Polaris" href="http://localhost:8181/api/catalog/v1/config" description="Iceberg REST catalog — the source of truth for what tables exist." />
+  <LinkCard title="Garage (S3)" href="http://localhost:3900" description="S3-compatible object store holding the Iceberg warehouse bucket." />
+  <LinkCard title="LiteLLM" href="http://localhost:4000" description="OpenAI-compatible gateway in front of AWS Bedrock. (task up:chat)" />
+  <LinkCard title="MCP server" href="http://localhost:8000/mcp" description="FastMCP server exposing Trino to the model. (task up:mcp)" />
+</CardGrid>
+
+## The workshop
+
+<CardGrid>
+  <Card title="Step 0 · Overview" icon="open-book">
+    The architecture and the ESA dataset. [Read →](/overview/)
+  </Card>
+  <Card title="Step 1 · Ingest" icon="seti:db">
+    Flink streams telemetry into Iceberg on Garage, via Polaris. [Read →](/ingest/)
+  </Card>
+  <Card title="Step 2 · Query" icon="magnifier">
+    Trino and Superset over the warehouse. [Read →](/query/)
+  </Card>
+  <Card title="Steps 3–4 · Chat & MCP" icon="rocket">
+    LibreChat on Bedrock, then a custom MCP server for Trino. [Read →](/chat/)
+  </Card>
+</CardGrid>
