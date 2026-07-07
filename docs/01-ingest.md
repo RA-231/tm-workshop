@@ -102,7 +102,8 @@ task rowcount
 ```
 
 Stuck? `git checkout step-1` gives you the repo state, and
-`task checkpoint:restore -- step-1` fetches a pre-built warehouse (then re-run
-`task catalog:create && task flink:job` so Polaris re-registers the table).
+`task checkpoint:restore -- step-1` fetches a pre-built warehouse — both the
+Iceberg files and the Polaris catalog that points at them — so you can start
+the stack and query right away, no re-ingest needed.
 
 Next: [Step 2 — Querying with Trino and Superset](02-query.md)

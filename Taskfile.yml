@@ -22,8 +22,9 @@ tasks:
       - echo "docs + service links -> http://localhost:4321"
 
   up:ingest:
-    desc: Start the ingest stack (Garage, Polaris, Flink)
+    desc: Start the ingest stack (Garage, Polaris + Postgres, Flink)
     cmds:
+      # Polaris pulls in its Postgres + one-shot bootstrap via depends_on.
       - docker compose up -d --build garage polaris flink-jobmanager flink-taskmanager
       - bash scripts/init-garage.sh
 

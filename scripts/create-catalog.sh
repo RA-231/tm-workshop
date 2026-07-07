@@ -60,12 +60,20 @@ case "$create_status" in
   *)   echo "  create failed with HTTP ${create_status}"; exit 1 ;;
 esac
 
-# Both of these are PUTs. Re-running returns a 2xx (or 409 if already present);
-# only a real failure (4xx/5xx other than 409) should abort.
+# Both of these are PUTs that grant roles/privileges. Re-running is a no-op the
+# first success makes permanent — but Polaris's JDBC backend reports an existing
+# grant as a 500 "duplicate key" (not a clean 409), so treat that as success
+# too. Only a genuinely new failure should abort.
 put_ok() {
-  local status
-  status=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$1" "${auth[@]}" -d "$2")
-  case "$status" in 2*|409) ;; *) echo "  $1 -> HTTP ${status}"; exit 1 ;; esac
+  local resp status body
+  resp=$(curl -s -w $'\n%{http_code}' -X PUT "$1" "${auth[@]}" -d "$2")
+  status=${resp##*$'\n'}
+  body=${resp%$'\n'*}
+  case "$status" in
+    2*|409) return 0 ;;
+    500) printf '%s' "$body" | grep -qiE "already exists|duplicate key" && return 0 ;;
+  esac
+  echo "  $1 -> HTTP ${status}: ${body}"; exit 1
 }
 
 echo "granting catalog_admin the rights to manage content ..."

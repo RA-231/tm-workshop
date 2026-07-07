@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Checkpoint helper: save or restore the Iceberg warehouse (the Garage S3
-# volumes) so attendees who fall behind can skip straight to a known-good
-# state.
+# Checkpoint helper: save or restore the warehouse so attendees who fall behind
+# can skip straight to a known-good state.
 #
 #   scripts/checkpoint.sh save <name>     -> checkpoints/<name>.tar.gz
 #   scripts/checkpoint.sh restore <name>  <- checkpoints/<name>.tar.gz,
 #                                            or $CHECKPOINT_BASE_URL/<name>.tar.gz
 #
-# NOTE: Polaris uses an in-memory metastore, so restoring the Garage data is
-# only half the picture — after a restore you must also re-create the catalog
-# (`task catalog:create`) and re-submit the Flink job so Polaris re-registers
-# the table against the restored files. The `restore` path does the catalog
-# step for you; re-run `task flink:job` afterwards.
+# This snapshots the Garage volumes (the Iceberg data + metadata files) AND the
+# Polaris Postgres volume (the catalog registration that points at them). They
+# are coupled — the catalog references specific metadata files — so both must
+# be captured and restored together. A restore is then complete: no re-create,
+# no re-ingest. (Stop the stack before restoring so nothing writes mid-swap.)
 #
 # Instructors: run `save` after finishing each step during prep, then host
 # the checkpoints/ directory anywhere attendees can reach and set
@@ -22,8 +21,8 @@ cmd="${1:?usage: checkpoint.sh {save|restore} <name>}"
 name="${2:?usage: checkpoint.sh {save|restore} <name>}"
 mkdir -p checkpoints
 
-# Tar/untar the two Garage docker volumes via a throwaway busybox container.
-VOLUMES="tm-tutorial_garage-meta tm-tutorial_garage-data"
+# Tar/untar the coupled state volumes via a throwaway busybox container.
+VOLUMES="tm-tutorial_garage-meta tm-tutorial_garage-data tm-tutorial_polaris-pg"
 
 case "$cmd" in
   save)
@@ -42,8 +41,7 @@ case "$cmd" in
     for v in $VOLUMES; do mounts="$mounts -v ${v}:/vol/${v#tm-tutorial_}"; done
     docker run --rm $mounts -v "$PWD/checkpoints:/out" busybox \
       sh -c "rm -rf /vol/* && tar -xzf /out/${name}.tar.gz -C /vol"
-    echo "restored Garage volumes from checkpoint '${name}'"
-    echo "now run: task catalog:create && task flink:job"
+    echo "restored warehouse + catalog from checkpoint '${name}' — start the stack and query"
     ;;
   *)
     echo "unknown command: $cmd" >&2; exit 1 ;;
