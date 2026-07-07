@@ -1,0 +1,23 @@
+# Garage — a lightweight, self-hostable S3-compatible object store.
+# This is a single-node dev layout; the Iceberg warehouse lives in the
+# `warehouse` bucket (created by scripts/init-garage.sh).
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+# Fixed secret: fine for a workshop that binds no public ports. Regenerate
+# with `openssl rand -hex 32` for anything real.
+rpc_secret = "18e57e485ed6e35c9bbe23b1e9d454bbd4d4fb9b1b4f6ff356c72a204d9c4a3f"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+[admin]
+api_bind_addr = "[::]:3903"
+admin_token = "workshop-admin-token"

@@ -1,0 +1,94 @@
+# Workshop task runner — https://taskfile.dev
+# `task --list` shows everything; docs/ tells you when to run what.
+version: '3'
+
+tasks:
+  setup:
+    desc: Create .env and the local data directories
+    cmds:
+      - mkdir -p data/raw
+      - cp -n .env.example .env || true
+      - echo "ready — edit .env when you receive the workshop AWS credential"
+
+  data:download:
+    desc: "Download the ESA dataset: task data:download -- [small|medium|full]"
+    cmds:
+      - python3 scripts/fetch_esa_adb.py {{.CLI_ARGS | default "small"}}
+
+  up:ingest:
+    desc: Start the ingest stack (Garage, Polaris, Flink)
+    cmds:
+      - docker compose up -d --build garage polaris flink-jobmanager flink-taskmanager
+      - bash scripts/init-garage.sh
+
+  data:prepare:
+    desc: Convert the pickled ESA channels into JSON for Flink to read
+    cmds:
+      - docker compose run --rm --build prepare
+
+  catalog:create:
+    desc: Create the 'workshop' catalog in Polaris
+    cmds:
+      - bash scripts/create-catalog.sh
+
+  flink:job:
+    desc: Run the JSON → Iceberg ingest job (Flink SQL)
+    cmds:
+      - docker compose exec -T flink-jobmanager bin/sql-client.sh -f /opt/flink/sql/ingest.sql
+
+  up:query:
+    desc: Start the query stack (Trino, Superset)
+    cmds:
+      - docker compose up -d --build trino superset
+
+  trino:
+    desc: Open an interactive Trino SQL session
+    interactive: true
+    cmds:
+      - docker compose exec trino trino --catalog iceberg --schema telemetry
+
+  rowcount:
+    desc: Count the rows ingested so far
+    cmds:
+      - docker compose up -d trino
+      - docker compose exec -T trino trino --execute "SELECT count(*) AS rows FROM iceberg.telemetry.readings"
+
+  up:chat:
+    desc: Start the chat stack (LiteLLM, MongoDB, LibreChat)
+    cmds:
+      - docker compose up -d litellm mongodb librechat
+      - echo "LibreChat -> http://localhost:3080  (register any account)"
+
+  up:mcp:
+    desc: Build + start the MCP server and reload LibreChat to pick it up
+    cmds:
+      - docker compose up -d --build mcp-server
+      - docker compose restart librechat
+      - echo "enable the 'telemetry' MCP server in LibreChat's tools menu"
+
+  up:
+    desc: Start the entire stack (all steps)
+    cmds:
+      - docker compose up -d --build
+      - bash scripts/init-garage.sh
+
+  down:
+    desc: Stop all containers (data survives)
+    cmds:
+      - docker compose --profile tools down
+
+  clean:
+    desc: Stop everything and delete the warehouse (fresh start)
+    prompt: This deletes the ingested Iceberg warehouse. Continue?
+    cmds:
+      - docker compose --profile tools down -v
+
+  checkpoint:save:
+    desc: "Snapshot the Iceberg warehouse: task checkpoint:save -- step-1"
+    cmds:
+      - bash scripts/checkpoint.sh save {{.CLI_ARGS}}
+
+  checkpoint:restore:
+    desc: "Restore a warehouse snapshot: task checkpoint:restore -- step-1"
+    cmds:
+      - bash scripts/checkpoint.sh restore {{.CLI_ARGS}}

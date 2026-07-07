@@ -1,0 +1,169 @@
+# The whole workshop runs from this file. Services are added step by step —
+# check the git tags (step-1 .. step-4) to see the stack grow.
+#
+# The Iceberg warehouse is the `warehouse` bucket in Garage (an S3-compatible
+# object store). Polaris, Flink, and Trino all reach it at http://garage:3900
+# with the same fixed key — see scripts/init-garage.sh.
+name: tm-tutorial
+
+services:
+  # ── Step 1: ingest ────────────────────────────────────────────────────────
+  garage:
+    image: dxflrs/garage:v2.3.0
+    ports:
+      - "3900:3900"   # S3 API
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+
+  polaris:
+    image: apache/polaris:1.5.0
+    ports:
+      - "8181:8181"
+    environment:
+      # Bootstrap a root principal so the workshop needs no auth setup.
+      # In-memory metastore: catalog metadata resets when the container stops.
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
+      polaris.realm-context.realms: POLARIS
+      # Polaris writes table metadata itself, so it needs the S3 key too.
+      AWS_REGION: garage
+      AWS_ACCESS_KEY_ID: GK31c2f218a2e44f485b94239e
+      AWS_SECRET_ACCESS_KEY: 7d37d093435a41f2aab8f13c19ba067d9776c90215f56614adad6ece597dbb34
+      # AWS SDK v2 ≥2.30 adds CRC32 upload trailers by default, which Garage
+      # (and most S3-compatible stores) reject. Only checksum when required.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      quarkus.otel.sdk.disabled: "true"
+    depends_on:
+      - garage
+
+  flink-jobmanager:
+    build: ./flink
+    command: jobmanager
+    ports:
+      - "8081:8081"   # Flink UI
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 2g
+      # Garage rejects the AWS SDK's default CRC32 upload trailers.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    volumes:
+      - ./data/prepared:/data/prepared:ro   # the JSON the ingest job reads
+      - ./flink/sql:/opt/flink/sql:ro        # edit SQL and re-run, no rebuild
+    depends_on:
+      - polaris
+
+  flink-taskmanager:
+    build: ./flink
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+        taskmanager.memory.process.size: 4g
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    volumes:
+      - ./data/prepared:/data/prepared:ro
+    depends_on:
+      - flink-jobmanager
+
+  # ── Step 2: query ─────────────────────────────────────────────────────────
+  trino:
+    image: trinodb/trino:482
+    ports:
+      - "8080:8080"   # SQL + web UI
+    environment:
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    volumes:
+      - ./trino/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties:ro
+    depends_on:
+      - polaris
+      - garage
+
+  superset:
+    build: ./superset
+    ports:
+      - "8088:8088"
+    depends_on:
+      - trino
+
+  # ── Step 3: chat ──────────────────────────────────────────────────────────
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ["--config", "/etc/litellm/config.yaml"]
+    ports:
+      - "4000:4000"
+    environment:
+      # The shared workshop AWS credential lives HERE and nowhere else.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-workshop}
+    volumes:
+      - ./litellm/config.yaml:/etc/litellm/config.yaml:ro
+
+  mongodb:
+    image: mongo:7
+    command: mongod --quiet --logpath /dev/null
+    volumes:
+      - mongo-data:/data/db
+
+  librechat:
+    image: ghcr.io/danny-avila/librechat:v0.8.7
+    ports:
+      - "3080:3080"
+    environment:
+      HOST: 0.0.0.0
+      MONGO_URI: mongodb://mongodb:27017/LibreChat
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-workshop}
+      # Frictionless login: anyone can self-register on their own instance.
+      ALLOW_REGISTRATION: "true"
+      ALLOW_EMAIL_LOGIN: "true"
+      ALLOW_UNVERIFIED_EMAIL_LOGIN: "true"
+      # Fixed keys — fine for a local workshop instance, never for production.
+      CREDS_KEY: f34be427ebb29de8d88c107a71546019685ed8b241d8f2ed00c3df97ad2566f0
+      CREDS_IV: e2341419ec3dd3d19b13a1a87fafcbfb
+      JWT_SECRET: 16f8c0ef4a5d391b26034086c628469d3f9f497f08163ab9b40137092f2909ef
+      JWT_REFRESH_SECRET: eaa5191f2914e30b9387fd84e254e4ba6fc51b4654968a9b0803b456a54b8418
+    volumes:
+      - ./librechat/librechat.yaml:/app/librechat.yaml:ro
+    depends_on:
+      - mongodb
+      - litellm
+
+  # ── Step 4: MCP ───────────────────────────────────────────────────────────
+  mcp-server:
+    build: ./mcp-server
+    ports:
+      - "8000:8000"   # streamable-http MCP endpoint at /mcp
+    environment:
+      TRINO_HOST: trino
+      TRINO_PORT: "8080"
+      TRINO_CATALOG: iceberg
+      TRINO_SCHEMA: telemetry
+    depends_on:
+      - trino
+
+  # One-shot data prep: `task data:prepare` (docker compose run prepare).
+  # Converts the pickled ESA channels into newline-delimited JSON that the
+  # Flink ingest job reads.
+  prepare:
+    build: ./prepare
+    profiles: ["tools"]
+    environment:
+      DATA_DIR: /data/raw
+      OUT_DIR: /data/prepared
+      LIMIT_PER_CHANNEL: "0"
+    volumes:
+      - ./data/raw:/data/raw:ro
+      - ./data/prepared:/data/prepared
+
+volumes:
+  mongo-data:
+  garage-meta:
+  garage-data:

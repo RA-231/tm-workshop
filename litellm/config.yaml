@@ -1,0 +1,32 @@
+# LiteLLM gateway config: one OpenAI-compatible endpoint in front of AWS Bedrock.
+#
+# Why a gateway at all? Everyone in the workshop shares ONE AWS credential.
+# LiteLLM keeps that credential in exactly one place and hands every client
+# (LibreChat, curl, your own scripts) a plain OpenAI-style API with a master
+# key we control — plus rate limiting and spend tracking if we need it.
+#
+# NOTE for instructors: the Bedrock model IDs below must match what the
+# workshop AWS account has enabled. Adjust during prep (`aws bedrock
+# list-foundation-models`); cross-region inference profiles use a `us.` or
+# `eu.` prefix.
+
+model_list:
+  - model_name: claude-sonnet
+    litellm_params:
+      model: bedrock/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+  - model_name: claude-haiku
+    litellm_params:
+      model: bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+litellm_settings:
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

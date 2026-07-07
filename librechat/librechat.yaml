@@ -1,0 +1,35 @@
+# LibreChat configuration for the workshop.
+#
+# One custom endpoint: LiteLLM, which fronts AWS Bedrock. LibreChat could
+# talk to Bedrock directly, but routing through LiteLLM means the shared AWS
+# credential lives in exactly one service and every client gets a plain
+# OpenAI-compatible API. (See docs/03-chat.md for the full trade-off.)
+
+version: 1.2.1
+cache: true
+
+# Step 4: our FastMCP server, giving the model tools against Trino.
+# Enable it in the chat's tools menu after `task up:mcp`.
+mcpServers:
+  telemetry:
+    type: streamable-http
+    url: http://mcp-server:8000/mcp
+    timeout: 30000
+
+interface:
+  # Keep the UI focused for the workshop
+  agents: false
+  prompts: false
+  bookmarks: false
+
+endpoints:
+  custom:
+    - name: "Workshop Models"
+      apiKey: "${LITELLM_MASTER_KEY}"
+      baseURL: "http://litellm:4000/v1"
+      models:
+        default: ["claude-sonnet", "claude-haiku"]
+        fetch: true
+      titleConvo: true
+      titleModel: "claude-haiku"
+      modelDisplayLabel: "Claude (Bedrock)"
