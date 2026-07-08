@@ -1,0 +1,6 @@
+[project]
+name = "trino-mcp"
+version = "0.1.0"
+description = "Generic dataset-agnostic MCP server over Trino"
+requires-python = ">=3.12"
+dependencies = ["fastmcp>=3,<4", "trino>=0.330"]
