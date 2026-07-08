@@ -9,7 +9,6 @@ Run in stack:  docker compose up mcp-server
 """
 
 import os
-import re
 
 import trino
 from fastmcp import FastMCP
@@ -25,7 +24,7 @@ MAX_ROWS = int(os.environ.get("MAX_ROWS", "500"))
 # far larger window than the row-capped `query` tool without touching the chat.
 ANALYSIS_MAX_ROWS = int(os.environ.get("ANALYSIS_MAX_ROWS", "200000"))
 
-mcp = FastMCP("telemetry-trino")
+mcp = FastMCP("esa-adb")
 
 
 def _connect() -> trino.dbapi.Connection:
@@ -70,42 +69,9 @@ def _fetch_series(channel: str, start: str, end: str):
     return [r[0] for r in rows], [float(r[1]) for r in rows]
 
 
-@mcp.tool
-def list_tables() -> dict:
-    """List the telemetry tables available in the Iceberg catalog."""
-    return _run(f"SHOW TABLES FROM {TRINO_CATALOG}.{TRINO_SCHEMA}")
-
-
-@mcp.tool
-def describe_table(table: str) -> dict:
-    """Show the columns and types of a telemetry table.
-
-    Args:
-        table: A table name returned by list_tables, e.g. 'readings'.
-    """
-    if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", table):
-        raise ValueError(f"invalid table name: {table!r}")
-    return _run(f"DESCRIBE {TRINO_CATALOG}.{TRINO_SCHEMA}.{table}")
-
-
-@mcp.tool
-def query(sql: str) -> dict:
-    """Run a read-only SQL query against the telemetry warehouse.
-
-    Only SELECT statements are allowed. Results are capped at 500 rows, so
-    aggregate (GROUP BY, avg, min, max, count) instead of pulling raw rows
-    whenever possible. Timestamps are UTC.
-
-    Example:
-        SELECT channel, count(*) AS n, avg(value) AS mean
-        FROM readings
-        WHERE ts BETWEEN TIMESTAMP '2000-03-01' AND TIMESTAMP '2000-04-01'
-        GROUP BY channel
-        ORDER BY n DESC
-    """
-    if not re.match(r"^\s*(select|show|describe|with)\b", sql, re.IGNORECASE):
-        raise ValueError("Only read-only queries (SELECT/SHOW/DESCRIBE/WITH) are allowed.")
-    return _run(sql)
+# Generic Trino access (query / list_tables / describe_table) now lives in the
+# separate `trino-mcp` server. This server is domain-only: ESA-ADB navigation,
+# the phase-aware detectors, and the dataset resources/prompts.
 
 
 @mcp.tool
@@ -263,6 +229,129 @@ def data_gaps(channel: str, start: str, end: str) -> dict:
     """
     ts, vals = _fetch_series(channel, start, end)
     return analysis.gap_analysis(ts)
+
+
+@mcp.tool
+def stl_residual(channel: str, start: str, end: str,
+                 period_samples: int | None = None) -> dict:
+    """STL-style trend/seasonal residual SCORES for a channel over a window.
+
+    Resamples, removes trend (and an optional seasonal cycle of period_samples),
+    and robust-z-scores the residual. High max_resid_z / stl_score flags points
+    that departed the channel's own trend/season. Scores only — you set the
+    threshold by comparing against a nominal window.
+    """
+    ts, vals = _fetch_series(channel, start, end)
+    return analysis.stl_residual_score(ts, vals, period=period_samples)
+
+
+@mcp.tool
+def cadence(channel: str, start: str, end: str) -> dict:
+    """Score sampling regularity over a window: jitter, drift, and
+    cadence_irregularity (higher = less steady). Complements data_gaps, which
+    finds dropouts rather than measuring steadiness. Scores only.
+    """
+    ts, vals = _fetch_series(channel, start, end)
+    return analysis.cadence_score(ts)
+
+
+@mcp.tool
+def cross_correlation(channel: str, start: str, end: str,
+                      sibling_channels: list[str]) -> dict:
+    """Score how well a channel moves with its sibling channels over a window.
+
+    Returns each sibling's Pearson and best *lagged* correlation, plus a
+    decorrelation_score (higher = this channel moved independently of its group,
+    often suspicious). Pass siblings from the same group (see list_channels).
+    Scores only.
+    """
+    ts, vals = _fetch_series(channel, start, end)
+    sibs = []
+    for sc in (sibling_channels or []):
+        s_ts, s_vals = _fetch_series(sc, start, end)
+        sibs.append({"name": sc, "timestamps": s_ts, "values": s_vals})
+    return analysis.cross_channel_correlation(ts, vals, sibs)
+
+
+# ── Resources: read-only reference context (the MCP "resources" primitive) ────
+# LibreChat v0.8.7 renders tools only, so these are ignored there — but they are
+# first-class in Claude Desktop / Claude Code, and they make the server
+# protocol-complete. Same server, richer in a protocol-complete client.
+@mcp.resource("about://dataset")
+def about_dataset() -> str:
+    """Briefing on the ESA-ADB telemetry — what it is, how it's anonymized, and
+    how to reason about it. Read this first."""
+    return (
+        "ESA Anomaly Dataset (ESA-ADB), Mission1 subset -- real, anonymized ESA\n"
+        "satellite telemetry.\n\n"
+        "- Channels are ANONYMIZED, quantized 'staircase' signals: the value\n"
+        "  dwells at a discrete level, then steps. Names/units/subsystems are\n"
+        "  placeholders (channel_N, physical_unit_N, subsystem_N) with NO public\n"
+        "  key -- reason from the signal, not the names.\n"
+        "- Metadata: target=YES channels are monitored for anomalies; channels\n"
+        "  sharing a group are related and comparable; physical_unit groups\n"
+        "  comparable quantities; categorical flags discrete signals.\n"
+        "- Detection: value-only thresholds are weak here. Decompose the signal\n"
+        "  into (level, dwell-duration) segments and reason about PHASE and\n"
+        "  DURATION.\n"
+        "- Anomaly categories: Anomaly (alarm), Rare Event (rare-but-nominal,\n"
+        "  don't alarm after first sighting), Communication Gap, Invalid segment.\n"
+        "- DISCIPLINE: anomalies_for is the human-labeled ANSWER KEY. Don't\n"
+        "  consult it while detecting; use it only to grade findings afterward."
+    )
+
+
+@mcp.resource("schema://esa_adb")
+def schema_resource() -> str:
+    """The warehouse data dictionary: every table/view and its columns."""
+    tables = _run(f"SHOW TABLES FROM {TRINO_CATALOG}.{TRINO_SCHEMA}")["rows"]
+    lines = [f"catalog {TRINO_CATALOG}, schema {TRINO_SCHEMA}", ""]
+    for (t,) in tables:
+        cols = _run(f"DESCRIBE {TRINO_CATALOG}.{TRINO_SCHEMA}.{t}")["rows"]
+        lines.append(f"- {t}(" + ", ".join(f"{c[0]} {c[1]}" for c in cols) + ")")
+    return "\n".join(lines)
+
+
+@mcp.resource("catalog://channels")
+def channels_catalog() -> str:
+    """The channel catalog: channel + subsystem / unit / group / target flags."""
+    r = _run("SELECT channel, subsystem, physical_unit, group_name, target, "
+             "categorical FROM channels ORDER BY channel")
+    header = " | ".join(r["columns"])
+    body = "\n".join(" | ".join(str(x) for x in row) for row in r["rows"])
+    return f"{header}\n{body}"
+
+
+# ── Prompts: canned, parameterized workflows (the MCP "prompts" primitive) ────
+@mcp.prompt
+def investigate_channel(channel: str) -> str:
+    """Kick off a disciplined anomaly investigation of one channel."""
+    return (
+        f"Investigate {channel} for anomalies using the telemetry tools.\n"
+        f"1. Orient: channel_summary({channel}); note its time span.\n"
+        f"2. Scan a broad window with phase_anomaly, plateau, data_gaps,\n"
+        f"   stl_residual, cadence. Scores are relative -- they mean nothing\n"
+        f"   in isolation.\n"
+        f"3. Calibrate: score a quiet window from {channel} and compare.\n"
+        f"4. Zoom: readings_around the worst segment; describe what happened.\n"
+        f"5. Corroborate: cross_correlation({channel}, siblings from its group).\n"
+        f"6. ONLY after committing to a ranked list, call anomalies_for({channel})\n"
+        f"   to grade yourself (hits / misses / false alarms).\n"
+        f"Report each finding with its time window, the scores that flagged it vs\n"
+        f"the nominal comparison, and a phase+duration explanation."
+    )
+
+
+@mcp.prompt
+def triage_window(channel: str, start: str, end: str) -> str:
+    """Run the full detector suite on one window and summarize vs a baseline."""
+    return (
+        f"Triage {channel} from {start} to {end}. Run phase_anomaly, plateau,\n"
+        f"data_gaps, stl_residual, and cadence on that window, then the same\n"
+        f"detectors on an equally long quiet window from {channel} as a baseline.\n"
+        f"Summarize which detectors fired, by how much vs baseline, and your best\n"
+        f"explanation of the behavior. Do not use anomalies_for."
+    )
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 """Phase-aware telemetry anomaly detectors for the capstone agent.
 
 Pure functions over raw (timestamps, values) arrays — NO database coupling.
-The agent pulls a window from the telemetry MCP server, hands the arrays to
-these functions in the Code Interpreter, and reasons about the scores.
+The MCP server's analysis tools pull a window from Trino, call these functions,
+and return only the SCORES to the agent; the raw arrays never enter the chat.
 
 Design contract (all four rules matter):
   1. Return SCORES, never boolean flags. The agent decides thresholds.
@@ -24,7 +24,9 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-__all__ = ["phase_anomaly_score", "plateau_score", "gap_analysis", "segment"]
+__all__ = ["phase_anomaly_score", "plateau_score", "gap_analysis",
+           "stl_residual_score", "cross_channel_correlation", "cadence_score",
+           "segment"]
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -254,6 +256,130 @@ def gap_analysis(timestamps, expected_dt_s: float | None = None) -> dict:
     }
 
 
+def stl_residual_score(timestamps, values, period: int | None = None,
+                       trend_window: int | None = None) -> dict:
+    """STL-style trend/seasonal residual scoring on the resampled signal.
+
+    Resamples to a uniform grid at the dominant sample interval, removes a slow
+    trend (edge-corrected centered moving average), optionally removes a seasonal
+    cycle of `period` samples, and scores the residual with robust (MAD)
+    z-scores. High residual z ⇒ the value departed its own trend/season sharply.
+    `period`/`trend_window` are in SAMPLES of the resampled grid; omit `period`
+    for trend-only detrending. stl_score = max residual z.
+    """
+    epoch = _to_epoch(timestamps)
+    v = np.asarray(values, dtype="float64")
+    if epoch.size < 8:
+        return {"stl_score": 0.0, "note": "too few points"}
+    dt = float(np.median(np.diff(epoch))) or 1.0
+    grid = np.arange(epoch[0], epoch[-1] + dt, dt)
+    y = np.interp(grid, epoch, v)
+    n = y.size
+    if trend_window is None:
+        trend_window = max(5, (n // 10) | 1)  # odd, ~10% of the window
+    if trend_window % 2 == 0:
+        trend_window += 1
+    ones = np.ones(min(trend_window, n if n % 2 else n - 1))
+    counts = np.convolve(np.ones(n), ones, mode="same")
+    trend = np.convolve(y, ones, mode="same") / counts  # edge-corrected MA
+    detr = y - trend
+    seasonal = np.zeros_like(detr)
+    if period and 2 <= period < n // 2:
+        for p in range(period):
+            idx = np.arange(p, n, period)
+            seasonal[idx] = np.mean(detr[idx])
+        seasonal -= np.mean(seasonal)
+    z, _, scale = _robust_z(detr - seasonal)
+    az = np.abs(z)
+    worst = int(np.argmax(az))
+    return {
+        "n_resampled": int(n),
+        "resampled_dt_s": round(dt, 2),
+        "trend_window_samples": int(ones.size),
+        "period_samples": int(period) if period else 0,
+        "resid_scale": round(float(scale), 6),
+        "max_resid_z": round(float(az.max()), 2),
+        "n_over_3sigma": int(np.sum(az > 3)),
+        "frac_over_3sigma": round(float(np.mean(az > 3)), 4),
+        "worst_at": _iso(grid[worst]),
+        "stl_score": round(float(az.max()), 2),
+    }
+
+
+def cadence_score(timestamps, expected_dt_s: float | None = None) -> dict:
+    """Score sampling regularity: jitter and drift of the inter-sample interval.
+
+    Distinct from gap_analysis (which finds big dropouts) — this measures how
+    *steady* the cadence is. Returns the dominant interval, jitter (robust spread
+    of intervals / dominant), drift (second-half vs first-half median interval),
+    the fraction of intervals within 10% of dominant, and cadence_irregularity =
+    jitter + |drift - 1|. Higher ⇒ less regular.
+    """
+    epoch = _to_epoch(timestamps)
+    if epoch.size < 4:
+        return {"cadence_irregularity": 0.0, "note": "too few points"}
+    d = np.diff(epoch)
+    dom = float(expected_dt_s or np.median(d)) or 1.0
+    scale = 1.4826 * float(np.median(np.abs(d - np.median(d))))
+    jitter = scale / dom
+    half = d.size // 2
+    drift = (float(np.median(d[half:])) / dom) if half else 1.0
+    frac_regular = float(np.mean(np.abs(d - dom) <= 0.1 * dom))
+    return {
+        "dominant_dt_s": round(dom, 2),
+        "n_intervals": int(d.size),
+        "jitter": round(jitter, 4),
+        "drift_ratio": round(drift, 3),
+        "frac_within_10pct": round(frac_regular, 4),
+        "cadence_irregularity": round(jitter + abs(drift - 1.0), 4),
+    }
+
+
+def cross_channel_correlation(timestamps, values, sibling_series,
+                              max_lag_s: float | None = None) -> dict:
+    """Score how well a channel moves with its sibling channels.
+
+    For each sibling, interpolate onto this channel's timestamps and compute the
+    Pearson correlation plus the best *lagged* correlation (searching ±max_lag_s).
+    A channel that normally tracks its group but decorrelates in a window is
+    suspicious. Returns per-sibling {pearson_r, best_lag_s, best_lag_r} and
+    decorrelation_score = 1 - max|best_lag_r| over siblings (high ⇒ this channel
+    moves independently of its group).
+    """
+    base_e = _to_epoch(timestamps)
+    base_v = np.asarray(values, dtype="float64")
+    if not sibling_series or base_e.size < 8 or np.std(base_v) < 1e-12:
+        return {"decorrelation_score": 0.0, "siblings": [],
+                "note": "need siblings and a varying signal"}
+    dt = float(np.median(np.diff(base_e))) or 1.0
+    max_lag_n = int(max_lag_s / dt) if max_lag_s else min(20, base_e.size // 5)
+    out, best_overall = [], 0.0
+    for s in sibling_series:
+        se = _to_epoch(s["timestamps"])
+        sv = np.asarray(s["values"], dtype="float64")
+        if se.size < 2 or np.std(sv) < 1e-12:
+            out.append({"name": s.get("name", "sibling"), "pearson_r": 0.0,
+                        "best_lag_s": 0.0, "best_lag_r": 0.0})
+            continue
+        si = np.interp(base_e, se, sv)
+        r0 = float(np.corrcoef(base_v, si)[0, 1])
+        best_r, best_lag = r0, 0
+        for lag in range(-max_lag_n, max_lag_n + 1):
+            if lag == 0:
+                continue
+            a = base_v[max(0, lag): base_v.size + min(0, lag)]
+            b = si[max(0, -lag): si.size + min(0, -lag)]
+            if a.size < 8 or np.std(a) < 1e-12 or np.std(b) < 1e-12:
+                continue
+            r = float(np.corrcoef(a, b)[0, 1])
+            if abs(r) > abs(best_r):
+                best_r, best_lag = r, lag
+        out.append({"name": s.get("name", "sibling"), "pearson_r": round(r0, 3),
+                    "best_lag_s": round(best_lag * dt, 1), "best_lag_r": round(best_r, 3)})
+        best_overall = max(best_overall, abs(best_r))
+    return {"decorrelation_score": round(1.0 - best_overall, 3), "siblings": out}
+
+
 if __name__ == "__main__":
     # Usage / self-test harness: reads {"timestamps":[...],"values":[...],
     # "siblings":[{"name","timestamps","values"}]} from argv[1] and prints scores.
@@ -263,8 +389,13 @@ if __name__ == "__main__":
     payload = json.load(open(sys.argv[1]))
     ts, vals = payload["timestamps"], payload["values"]
     sib = payload.get("siblings")
-    print(json.dumps({
+    out = {
         "phase": phase_anomaly_score(ts, vals, sibling_series=sib),
         "plateau": plateau_score(ts, vals),
         "gap": gap_analysis(ts),
-    }, indent=2))
+        "stl": stl_residual_score(ts, vals),
+        "cadence": cadence_score(ts),
+    }
+    if sib:
+        out["cross_channel"] = cross_channel_correlation(ts, vals, sib)
+    print(json.dumps(out, indent=2))
