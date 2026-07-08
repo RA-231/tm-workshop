@@ -1,0 +1,6 @@
+[project]
+name = "superset-mcp"
+version = "0.1.0"
+description = "Do-what-I-mean visualization MCP server over Apache Superset"
+requires-python = ">=3.12"
+dependencies = ["fastmcp>=3,<4", "requests>=2.31"]
