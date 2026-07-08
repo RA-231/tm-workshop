@@ -83,11 +83,11 @@ tasks:
       - echo "LibreChat -> http://localhost:3080  (register any account)"
 
   up:mcp:
-    desc: Build + start the MCP server and reload LibreChat to pick it up
+    desc: Build + start the three MCP servers (esa-adb, trino, superset) and reload LibreChat
     cmds:
-      - docker compose up -d --build mcp-server
+      - docker compose up -d --build mcp-server trino-mcp superset-mcp
       - docker compose restart librechat
-      - echo "enable the 'telemetry' MCP server in LibreChat's tools menu"
+      - echo "enable the esa-adb / trino / superset MCP servers in the agent's Tools menu"
 
   up:
     desc: Start the entire stack (all steps)

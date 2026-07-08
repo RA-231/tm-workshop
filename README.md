@@ -39,6 +39,7 @@ doc:
 | ☕ | _break_ | |
 | Step 3 | [Chat](docs/03-chat.md) | LibreChat + LiteLLM + Bedrock |
 | Step 4 | [MCP](docs/04-mcp-server.md) | Build an MCP server for Trino with FastMCP |
+| Step 5 | [Agent](docs/05-agent.md) | Compose trino/esa-adb/superset MCP servers into an analysis agent |
 
 The short version of Step 1–2:
 

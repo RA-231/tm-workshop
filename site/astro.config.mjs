@@ -20,6 +20,7 @@ export default defineConfig({
         { label: "2 · Query", link: "/query/" },
         { label: "3 · Chat", link: "/chat/" },
         { label: "4 · MCP Server", link: "/mcp-server/" },
+        { label: "5 · Agent", link: "/agent/" },
       ],
     }),
   ],
