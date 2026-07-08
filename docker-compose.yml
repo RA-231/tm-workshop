@@ -219,6 +219,33 @@ services:
     depends_on:
       - trino
 
+  # Generic, dataset-agnostic Trino explorer (query/list/describe any catalog).
+  trino-mcp:
+    build: ./trino-mcp
+    ports:
+      - "8001:8000"   # streamable-http MCP endpoint at /mcp
+    environment:
+      TRINO_HOST: trino
+      TRINO_PORT: "8080"
+      TRINO_CATALOG: iceberg
+    depends_on:
+      - trino
+
+  # Do-what-I-mean visualization: turns agent intent into Superset charts.
+  superset-mcp:
+    build: ./superset-mcp
+    ports:
+      - "8002:8000"   # streamable-http MCP endpoint at /mcp
+    environment:
+      SUPERSET_URL: http://superset:8088
+      SUPERSET_USER: admin
+      SUPERSET_PASSWORD: admin
+      SUPERSET_DB_NAME: "Trino (Iceberg telemetry)"
+      SUPERSET_PUBLIC_URL: http://localhost:8088
+      SUPERSET_SCHEMA: esa_adb
+    depends_on:
+      - superset
+
   # One-shot data prep: `task data:prepare` (docker compose run prepare).
   # Converts the pickled ESA channels into newline-delimited JSON that the
   # Flink ingest job reads.

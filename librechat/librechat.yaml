@@ -11,10 +11,19 @@ cache: true
 # Step 4: our FastMCP server, giving the model tools against Trino.
 # Enable it in the chat's tools menu after `task up:mcp`.
 mcpServers:
-  telemetry:
+  # Three focused servers the capstone agent composes (Step 5).
+  esa-adb:                       # domain: telemetry nav + phase-aware detectors
     type: streamable-http
     url: http://mcp-server:8000/mcp
     timeout: 30000
+  trino:                         # generic, dataset-agnostic Trino exploration
+    type: streamable-http
+    url: http://trino-mcp:8000/mcp
+    timeout: 30000
+  superset:                      # do-what-I-mean visualization
+    type: streamable-http
+    url: http://superset-mcp:8000/mcp
+    timeout: 60000
 
 # LibreChat blocks MCP server URLs that resolve to private IPs (an SSRF guard)
 # unless their domain is allow-listed here. Our server is reached at the compose
@@ -23,6 +32,8 @@ mcpServers:
 mcpSettings:
   allowedDomains:
     - "mcp-server"
+    - "trino-mcp"
+    - "superset-mcp"
 
 interface:
   # Agents on: the Step-5 capstone builds a telemetry anomaly-analysis agent.
