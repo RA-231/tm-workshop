@@ -59,7 +59,7 @@ tasks:
   up:query:
     desc: Start the query stack (Trino, Superset)
     cmds:
-      - docker compose up -d --build trino superset
+      - docker compose up -d --build --wait trino superset
 
   superset:dataset:
     desc: (Re)register the esa_adb.readings dataset in Superset
@@ -75,7 +75,7 @@ tasks:
   rowcount:
     desc: Count the rows ingested so far
     cmds:
-      - docker compose up -d trino
+      - docker compose up -d --wait trino
       - docker compose exec -T trino trino --execute "SELECT count(*) AS rows FROM iceberg.esa_adb.readings"
 
   bedrock:check:

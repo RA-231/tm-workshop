@@ -9,7 +9,7 @@ look at how it plans queries against Iceberg, then point Superset at it.
 Trino is a distributed SQL query engine — it owns no storage. You give it
 *catalogs* (connectors + config) and it federates queries across them. Our
 `iceberg` catalog points at the same Polaris REST catalog Flink writes to:
-Trino asks Polaris "where's the current metadata for `telemetry.readings`?",
+Trino asks Polaris "where's the current metadata for `esa_adb.readings`?",
 gets back a pointer to a metadata file on disk, and plans the query from
 there. **Polaris is the handoff point between the writer and the readers.**
 
@@ -20,10 +20,10 @@ task trino          # opens the Trino CLI
 ```sql
 SHOW CATALOGS;
 SHOW SCHEMAS FROM iceberg;
-SELECT count(*) FROM iceberg.telemetry.readings;
+SELECT count(*) FROM iceberg.esa_adb.readings;
 
 SELECT channel, count(*) AS samples, avg(value) AS mean
-FROM iceberg.telemetry.readings
+FROM iceberg.esa_adb.readings
 GROUP BY channel
 ORDER BY samples DESC
 LIMIT 10;
@@ -37,7 +37,7 @@ by month, in the `ts_month` column). Trino exploits all of it. Compare:
 
 ```sql
 EXPLAIN
-SELECT avg(value) FROM iceberg.telemetry.readings
+SELECT avg(value) FROM iceberg.esa_adb.readings
 WHERE ts_month = '2000-03';
 ```
 
@@ -54,15 +54,15 @@ see splits and bytes read.
 Iceberg also gives you tables *about* the table — snapshots, files, history:
 
 ```sql
-SELECT * FROM iceberg.telemetry."readings$snapshots";
+SELECT * FROM iceberg.esa_adb."readings$snapshots";
 SELECT file_path, record_count, file_size_in_bytes
-FROM iceberg.telemetry."readings$files" LIMIT 10;
+FROM iceberg.esa_adb."readings$files" LIMIT 10;
 ```
 
 Every Flink checkpoint you watched in Step 1 is a snapshot here. Time travel:
 
 ```sql
-SELECT count(*) FROM iceberg.telemetry.readings
+SELECT count(*) FROM iceberg.esa_adb.readings
 FOR VERSION AS OF <snapshot_id>;
 ```
 
@@ -84,12 +84,12 @@ The interesting ones:
 ```sql
 -- readings + their channel metadata
 SELECT channel, subsystem, physical_unit, avg(value) AS mean
-FROM iceberg.telemetry.readings_enriched
+FROM iceberg.esa_adb.readings_enriched
 GROUP BY channel, subsystem, physical_unit;
 
 -- the payoff: every reading tagged with whether it's inside a labeled anomaly
 SELECT ts, value, is_anomaly, anomaly_category
-FROM iceberg.telemetry.labeled_readings
+FROM iceberg.esa_adb.labeled_readings
 WHERE channel = 'channel_41' AND is_anomaly
 ORDER BY ts
 LIMIT 20;
@@ -119,7 +119,7 @@ Build a first chart:
    line, X = `ts` (day grain), Y = `AVG(value)`, dimension = `channel`, filter
    to 3–4 channels so it stays readable.
 3. Add `labeled_readings` as a dataset (**Datasets → + Dataset** →
-   `iceberg` / `telemetry` / `labeled_readings`) and chart `channel_41` with
+   `iceberg` / `esa_adb` / `labeled_readings`) and chart `channel_41` with
    `is_anomaly` as the color dimension — the anomalies light up.
 4. Add both to a dashboard.
 

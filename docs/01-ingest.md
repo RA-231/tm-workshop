@@ -10,7 +10,7 @@ A table is a set of objects in the warehouse — here, the `warehouse` bucket in
 Garage:
 
 ```
-s3://warehouse/telemetry/readings/
+s3://warehouse/esa_adb/readings/
 ├── metadata/
 │   ├── v3.metadata.json        ← table schema, partition spec, snapshot list
 │   ├── snap-8231...avro        ← manifest list: one per snapshot
@@ -37,7 +37,7 @@ Two consequences worth pausing on:
 ## The role of Apache Polaris
 
 Polaris is an implementation of the **Iceberg REST catalog** protocol. It's
-the small-but-critical service that maps `telemetry.readings` → "current
+the small-but-critical service that maps `esa_adb.readings` → "current
 metadata file is `v3.metadata.json`" and performs the atomic swap on commit.
 
 Because Flink (writer) and Trino (reader, Step 2) both speak the REST catalog
@@ -76,7 +76,7 @@ what make Step 2's views and Step 4's anomaly investigation possible.
 ## Do it
 
 ```bash
-task up:ingest        # garage, polaris, flink — and init the S3 bucket
+task up:ingest        # setup garage, polaris, flink — init S3 bucket
 task data:prepare     # pickled channels -> JSON under data/prepared/
 task catalog:create   # create the 'workshop' catalog in Polaris
 task flink:job        # run the ingest job (Flink SQL) — blocks until loaded
