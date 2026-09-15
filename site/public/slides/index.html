@@ -1,0 +1,1792 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Space Telemetry, End to End — workshop slides</title>
+<style>
+/* ── Presenter deck for the Space Summit 2026 telemetry workshop ────────────
+   Self-contained: no build, no CDN, no network. Open the file directly or
+   serve it (task slides -> http://localhost:4321/slides/).
+   Every slide is authored on a fixed 1280x720 stage that is scaled to fit the
+   projector, so what you see while writing is what lands on the wall.        */
+
+:root {
+  --bg:        #070b18;
+  --bg-2:      #0d1428;
+  --panel:     #131c33;
+  --ink:       #e8edf9;
+  --ink-dim:   #93a3c4;
+  --ink-faint: #5d6c8c;
+  --rule:      #24304f;
+  --cyan:      #67e8f9;
+  --teal:      #5eead4;
+  --violet:    #c4b5fd;
+  --amber:     #fcd34d;
+  --rose:      #fda4af;
+  --green:     #86efac;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body.blacked #stage { opacity: 0; }
+
+/* The stage: authored at 1280x720, scaled by JS to fill the viewport. */
+#viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+#stage {
+  position: relative;
+  width: 1280px; height: 720px;
+  transform-origin: center center;
+  transition: opacity .15s;
+}
+
+.slide {
+  position: absolute; inset: 0;
+  padding: 58px 72px 76px;
+  display: none;
+  flex-direction: column;
+  background:
+    radial-gradient(1100px 620px at 78% -12%, #1a2547 0%, transparent 62%),
+    radial-gradient(760px 520px at -8% 108%, #14243f 0%, transparent 60%),
+    var(--bg);
+  overflow: hidden;
+}
+.slide.current { display: flex; }
+
+/* ── Type ───────────────────────────────────────────────────────────────── */
+h1 { font-size: 66px; line-height: 1.04; margin: 0 0 18px; letter-spacing: -1.6px; font-weight: 750; }
+h2 {
+  font-size: 42px; line-height: 1.1; margin: 0 0 26px;
+  letter-spacing: -0.8px; font-weight: 700;
+}
+h2 .thin { color: var(--ink-faint); font-weight: 400; }
+h3 { font-size: 23px; margin: 0 0 10px; font-weight: 650; letter-spacing: -0.2px; }
+p  { font-size: 25px; line-height: 1.45; margin: 0 0 18px; color: var(--ink); }
+.lead { font-size: 30px; line-height: 1.38; color: var(--ink); }
+.dim  { color: var(--ink-dim); }
+.small { font-size: 19px; line-height: 1.45; }
+b, strong { color: #fff; font-weight: 680; }
+em { color: var(--amber); font-style: italic; }
+a { color: var(--cyan); }
+
+ul, ol { margin: 0 0 16px; padding-left: 1.1em; }
+li { font-size: 25px; line-height: 1.42; margin-bottom: 14px; color: var(--ink); }
+li::marker { color: var(--ink-faint); }
+ul.tight li, ol.tight li { font-size: 21px; margin-bottom: 9px; }
+ul.plain { list-style: none; padding-left: 0; }
+
+code { font-family: var(--mono); font-size: 0.88em; color: var(--teal); }
+strong code, b code { color: var(--teal); }
+
+/* ── Chrome: step chip, progress, slide number ──────────────────────────── */
+.chip {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-size: 15px; letter-spacing: 2.2px; text-transform: uppercase;
+  font-weight: 700; color: var(--ink-faint); margin-bottom: 18px;
+}
+.chip::before {
+  content: ""; width: 26px; height: 3px; border-radius: 2px; background: currentColor;
+}
+.slide[data-accent="ingest"] .chip { color: var(--cyan); }
+.slide[data-accent="query"]  .chip { color: var(--teal); }
+.slide[data-accent="chat"]   .chip { color: var(--violet); }
+.slide[data-accent="mcp"]    .chip { color: var(--amber); }
+.slide[data-accent="agent"]  .chip { color: var(--rose); }
+
+#progress {
+  position: fixed; left: 0; bottom: 0; height: 3px; background: var(--cyan);
+  width: 0; transition: width .18s ease; z-index: 30;
+}
+#pager {
+  position: fixed; right: 16px; bottom: 12px; z-index: 30;
+  font: 500 14px/1 var(--mono); color: var(--ink-faint);
+}
+body.overview #progress, body.overview #pager { display: none; }
+
+/* ── Layout helpers ─────────────────────────────────────────────────────── */
+.center { justify-content: center; }
+.grow { flex: 1; min-height: 0; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
+.cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.cols.wide-left  { grid-template-columns: 1.35fr 1fr; }
+.cols.wide-right { grid-template-columns: 1fr 1.35fr; }
+
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+  border: 1px solid var(--rule); border-radius: 14px; padding: 22px 24px;
+}
+.card h3 { color: #fff; }
+.card p, .card li { font-size: 20px; line-height: 1.4; margin-bottom: 10px; }
+.card p:last-child, .card li:last-child { margin-bottom: 0; }
+.card.cyan   { border-color: #1d4e63; }
+.card.teal   { border-color: #1c5350; }
+.card.violet { border-color: #3b3470; }
+.card.amber  { border-color: #5c4a18; }
+.card.rose   { border-color: #5e2c38; }
+
+/* Code / terminal blocks */
+pre {
+  margin: 0 0 18px; padding: 20px 24px;
+  background: #070d1d; border: 1px solid var(--rule); border-left: 4px solid var(--cyan);
+  border-radius: 12px; overflow: hidden;
+  font-family: var(--mono); font-size: 20px; line-height: 1.55; color: #cfe0ff;
+  white-space: pre; tab-size: 2;
+}
+pre.sm { font-size: 17px; line-height: 1.5; }
+pre.xs { font-size: 14.5px; line-height: 1.45; }
+pre.sql { border-left-color: var(--teal); }
+pre.py  { border-left-color: var(--amber); }
+pre.yaml{ border-left-color: var(--violet); }
+pre b   { color: #fff; font-weight: 700; }
+pre .c  { color: var(--ink-faint); }        /* comment */
+pre .k  { color: var(--violet); }           /* keyword */
+pre .s  { color: var(--green); }            /* string  */
+pre .hl { color: var(--amber); font-weight: 700; }
+
+kbd {
+  font: 600 16px/1 var(--mono); padding: 4px 8px; border-radius: 6px;
+  background: #1b2440; border: 1px solid var(--rule); border-bottom-width: 2px;
+  color: var(--ink);
+}
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 11px 14px; font-size: 20px; border-bottom: 1px solid var(--rule); }
+th { color: var(--ink-faint); font-size: 15px; letter-spacing: 1.4px; text-transform: uppercase; }
+td code { font-size: 18px; }
+
+.callout {
+  border-left: 4px solid var(--amber); background: rgba(252,211,77,.07);
+  padding: 16px 22px; border-radius: 0 12px 12px 0; margin-bottom: 16px;
+}
+.callout p { margin: 0; font-size: 22px; }
+
+.kicker { font-size: 21px; color: var(--ink-dim); margin-top: auto; padding-top: 14px; }
+.kicker b { color: var(--amber); }
+
+.pillrow { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.pill {
+  font: 600 18px/1 var(--sans); padding: 9px 16px; border-radius: 999px;
+  border: 1px solid var(--rule); background: rgba(255,255,255,.04); color: var(--ink-dim);
+}
+
+/* Presenter bios */
+.bio-head { display: flex; gap: 18px; align-items: center; margin-bottom: 18px; }
+.avatar {
+  flex: none; width: 74px; height: 74px; border-radius: 50%;
+  border: 2px solid var(--rule); background: rgba(255,255,255,.04);
+  display: grid; place-items: center;
+  font: 700 26px/1 var(--sans); letter-spacing: .5px;
+}
+.bio h3 { font-size: 27px; margin-bottom: 6px; }
+.bio .role { font-size: 18px; line-height: 1.35; margin: 0; font-weight: 600; }
+.bio { display: flex; flex-direction: column; }
+.bio .email {
+  margin: auto 0 0; padding-top: 14px; border-top: 1px solid var(--rule);
+  font: 500 17px/1 var(--mono); color: var(--ink-dim);
+}
+
+.big-num { font: 750 52px/1 var(--sans); letter-spacing: -1.5px; }
+.stat { text-align: center; }
+.stat .big-num { color: var(--cyan); }
+.stat p { font-size: 19px; color: var(--ink-dim); margin: 8px 0 0; }
+
+.ask {
+  font-size: 27px; line-height: 1.4; color: var(--amber); font-style: italic;
+  border-left: 4px solid var(--amber); padding-left: 20px; margin-bottom: 18px;
+}
+
+/* ── Title slide ────────────────────────────────────────────────────────── */
+.title-slide h1 { font-size: 78px; }
+.title-slide .sub { font-size: 28px; color: var(--ink-dim); max-width: 880px; }
+.title-slide .meta { margin-top: 28px; font: 600 18px/1 var(--mono); color: var(--ink-faint); letter-spacing: 1px; }
+.sat { position: absolute; right: -60px; top: -40px; opacity: .22; }
+
+/* ── Notes (presenter) ──────────────────────────────────────────────────── */
+.notes { display: none; }
+#notespanel {
+  position: fixed; left: 0; right: 0; bottom: 0; max-height: 38vh; overflow: auto;
+  background: #05080f; border-top: 2px solid var(--amber);
+  padding: 16px 26px; z-index: 40; font-size: 16px; line-height: 1.5; color: var(--ink-dim);
+}
+#notespanel b { color: var(--amber); }
+body:not(.notes-on) #notespanel { display: none; }
+
+/* ── Overview grid ──────────────────────────────────────────────────────── */
+body.overview #viewport { place-items: start center; overflow: auto; padding: 20px 0 40px; }
+body.overview #stage {
+  width: auto; height: auto; transform: none !important;
+  display: grid; grid-template-columns: repeat(4, 256px); gap: 14px; padding: 10px;
+}
+body.overview .slide {
+  display: flex; position: relative; inset: auto; zoom: .2;
+  border: 5px solid var(--rule); border-radius: 40px; cursor: pointer;
+}
+body.overview .slide.current { border-color: var(--cyan); }
+
+/* ── Help overlay ───────────────────────────────────────────────────────── */
+#help {
+  position: fixed; inset: 0; z-index: 50; display: none;
+  background: rgba(3,6,14,.93); padding: 6vh 8vw;
+  font-size: 18px; line-height: 2; color: var(--ink-dim);
+}
+body.help-on #help { display: block; }
+#help h3 { color: #fff; font-size: 26px; margin-bottom: 18px; }
+#help td { border: 0; padding: 4px 18px 4px 0; font-size: 18px; }
+#help td:first-child { width: 160px; }
+
+/* ── Presenter window ───────────────────────────────────────────────────── */
+body.presenter #viewport { display: none; }
+#presenter { display: none; }
+body.presenter #presenter {
+  display: grid; position: fixed; inset: 0; padding: 20px; gap: 18px;
+  grid-template-columns: 1.6fr 1fr; grid-template-rows: auto auto 1fr;
+}
+body.presenter #progress, body.presenter #pager, body.presenter #notespanel { display: none; }
+/* 16:9 so the scaled clone fills the box exactly — no letterboxing. */
+#p-now, #p-next {
+  background: #000; border: 1px solid var(--rule); border-radius: 12px;
+  overflow: hidden; aspect-ratio: 16 / 9; align-self: start;
+}
+/* Clones keep the authored stage size so vertically-centred slides stay centred. */
+#p-now .slide, #p-next .slide {
+  position: relative; inset: auto; display: flex;
+  width: 1280px; height: 720px; flex: none;
+}
+#p-now  { grid-column: 1; grid-row: 2; }
+#p-next { grid-column: 2; grid-row: 2; }
+#p-meta { grid-column: 1 / -1; grid-row: 1; display: flex; gap: 26px; align-items: baseline; }
+#p-clock { font: 700 44px/1 var(--mono); color: var(--cyan); }
+#p-timer { font: 700 44px/1 var(--mono); color: var(--amber); }
+#p-meta .lbl { font: 600 13px/1 var(--sans); letter-spacing: 2px; text-transform: uppercase; color: var(--ink-faint); }
+#p-notes {
+  grid-column: 1 / -1; grid-row: 3; overflow: auto; background: var(--bg-2);
+  border: 1px solid var(--rule); border-radius: 12px; padding: 20px 26px;
+  font-size: 21px; line-height: 1.55; color: var(--ink);
+}
+#p-notes b { color: var(--amber); }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+<div id="stage">
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     OPENING
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<section class="slide title-slide center" data-title="" data-accent="">
+  <svg class="sat" width="520" height="520" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+    <circle cx="100" cy="100" r="42" stroke="#67e8f9" stroke-width="1.2"/>
+    <ellipse cx="100" cy="100" rx="86" ry="32" stroke="#c4b5fd" stroke-width="1" transform="rotate(-24 100 100)"/>
+    <circle cx="168" cy="72" r="4" fill="#fcd34d"/>
+    <path d="M100 58v-18M100 142v18M58 100H40M142 100h18" stroke="#5d6c8c" stroke-width="1"/>
+  </svg>
+  <h1>Space Telemetry,<br/>End to End</h1>
+  <p class="sub">Process, store, query, and <em>talk to</em> satellite telemetry
+     using nothing but open source — and a laptop.</p>
+  <div class="meta">SPACE SUMMIT 2026 &nbsp;·&nbsp; 3 HOURS &nbsp;·&nbsp; 6 STEPS &nbsp;·&nbsp; ALL IN DOCKER</div>
+  <aside class="notes">
+    <b>Open with the ending.</b> Don't start with architecture — start by saying what they
+    walk out with: an agent that finds a real, labelled ESA anomaly nobody told it about.
+    <br/><b>Housekeeping:</b> Docker running? ~8&nbsp;GB RAM free? Wi-Fi + the mirror URL.
+    Hand out the AWS credential now so it's in .env before the break.
+    <br/>Press <b>?</b> any time for deck keys. <b>n</b> = these notes, <b>p</b> = presenter window.
+  </aside>
+</section>
+
+<section class="slide" data-title="Your presenters">
+  <div class="chip">Who's up here</div>
+  <h2>Your presenters</h2>
+  <div class="cols" style="margin-top:4px">
+    <div class="card cyan bio">
+      <div class="bio-head">
+        <div class="avatar" style="border-color:#1d4e63; color:var(--cyan)">CF</div>
+        <div>
+          <h3>Christopher Fichman</h3>
+          <p class="role" style="color:var(--cyan)">Software Engineering Manager · SSMO,<br/>NASA Goddard Space Flight Center</p>
+        </div>
+      </div>
+      <ul class="tight">
+        <li><b>10+ years</b> working with telemetry and ground systems</li>
+        <li>Built <b>MODM</b> for <b>TESS</b> at SSMO; refining it now for <b>CLPS</b> at JSC</li>
+      </ul>
+      <p class="email">chris.fichman@ra231.com</p>
+    </div>
+    <div class="card rose bio">
+      <div class="bio-head">
+        <div class="avatar" style="border-color:#5e2c38; color:var(--rose)">JM</div>
+        <div>
+          <h3>Jonathan Morton</h3>
+          <p class="role" style="color:var(--rose)">Chief Technology Officer · RA231</p>
+        </div>
+      </div>
+      <ul class="tight">
+        <li>Built the workshop stack end to end — <b>Flink → Iceberg → Trino</b></li>
+        <li>Designed the <b>three-server MCP architecture</b> you'll assemble in Steps 4–5</li>
+      </ul>
+      <p class="email">jonathan.morton@ra231.com</p>
+    </div>
+  </div>
+  <p class="kicker">Grab either of us in the break — or just shout. <b>Questions are welcome at any point.</b></p>
+  <aside class="notes">
+    Keep this to <b>30 seconds each</b>. The credibility that matters here isn't the CV, it's that
+    the room is about to run the thing on their own laptops.
+  </aside>
+</section>
+
+<section class="slide" data-title="Where this comes from">
+  <div class="chip">Provenance</div>
+  <h2>This isn't a workshop invention</h2>
+  <p class="lead">What you'll build today is <b>years of hard-won lessons</b> in designing
+     software systems for telemetry analysis — <em>operationally and for research</em> —
+     compressed into three hours.</p>
+  <p>Concretely: the telemetry database is based on <b>MODM</b>, a real mission data model.</p>
+  <div class="cols" style="margin-top:2px">
+    <div class="card cyan">
+      <h3 style="color:var(--cyan)">Built for TESS</h3>
+      <p class="dim">Chris built MODM for the <b>Transiting Exoplanet Survey Satellite</b> at
+        SSMO, NASA Goddard Space Flight Center.</p>
+    </div>
+    <div class="card amber">
+      <h3 style="color:var(--amber)">Being refined for CLPS</h3>
+      <p class="dim">The same model is being adapted now for the
+        <b>Commercial Lunar Payload Services</b> missions at JSC.</p>
+    </div>
+  </div>
+  <p class="kicker">Same data model, same lakehouse shape — <b>containerised so it fits on a
+     laptop in three hours.</b> The scale is the toy part. The design isn't.</p>
+  <aside class="notes">
+    This is where the room decides whether to take the next three hours seriously. Say plainly:
+    the ESA dataset is a stand-in, but <b>the shape of the warehouse is the one running on real
+    missions</b> — that's why we're teaching this stack and not a tutorial stack.
+    <br/>Worth naming the dual audience out loud — these systems have to serve <b>ops</b> (someone
+    on console, right now) and <b>research</b> (someone re-deriving a result in five years). Most
+    of the design decisions in this workshop come from that tension.
+  </aside>
+</section>
+
+<section class="slide center" data-title="Why we're here">
+  <h2>By the end of the morning</h2>
+  <p class="lead">You'll ask a chat window:</p>
+  <div class="ask">"Investigate channel_41 for anomalies. Work from the signal —
+     don't look at the labels until you've committed. Then chart it."</div>
+  <p class="lead">…and an agent will explore a lakehouse, score six detectors,
+     find a <b>7.6-hour stuck value</b> that no threshold would catch, build the chart,
+     and <em>grade itself</em> against the answer key.</p>
+  <p class="kicker">Everything under it — the storage, the SQL engine, the tools — you build today.</p>
+  <aside class="notes">
+    This is the money slide. Say it with confidence, then promise: <b>no magic, no SaaS</b>.
+    If anyone asks "is this a demo or does it really work?" — it really works, and we'll
+    watch it get one wrong at some point too. That's part of the lesson.
+  </aside>
+</section>
+
+<section class="slide" data-title="Agenda">
+  <h2>The plan</h2>
+  <table>
+    <tr><th style="width:90px">Step</th><th>What you do</th><th style="width:250px">Tools</th></tr>
+    <tr><td><b>0</b></td><td>The big picture + the dataset</td><td class="dim">—</td></tr>
+    <tr><td><b>1</b></td><td>Ingest telemetry into a table format</td><td class="dim">Flink · Iceberg · Polaris · Garage</td></tr>
+    <tr><td><b>2</b></td><td>Query it, then chart it</td><td class="dim">Trino · Superset</td></tr>
+    <tr><td>☕</td><td class="dim"><i>break</i></td><td></td></tr>
+    <tr><td><b>3</b></td><td>Put a model in front of it</td><td class="dim">LibreChat · LiteLLM · Bedrock</td></tr>
+    <tr><td><b>4</b></td><td>Give the model tools</td><td class="dim">MCP · FastMCP</td></tr>
+    <tr><td><b>5</b></td><td>Compose it all into an agent</td><td class="dim">3 MCP servers · one conversation</td></tr>
+  </table>
+  <p class="kicker">Each step is a doc at <b>localhost:4321</b> with the exact commands. Slides are the map; the docs are the terrain.</p>
+  <aside class="notes">
+    Rough timing: 0 = 10 min, 1 = 35, 2 = 40, break = 15, 3 = 20, 4 = 35, 5 = 40.
+    <b>Say out loud:</b> if you fall behind on the ingest you can restore a checkpoint and
+    skip straight ahead — nobody gets stranded.
+  </aside>
+</section>
+
+<section class="slide" data-title="Setup">
+  <h2>Before anything else</h2>
+  <div class="cols wide-left">
+    <div>
+      <pre>task setup            <span class="c"># .env + data dirs</span>
+task data:download    <span class="c"># ~150 MB subset</span>
+task up:docs          <span class="c"># the front door</span></pre>
+      <p class="lead">Then open <b>http://localhost:4321</b> — every service link
+         and every step's doc lives there.</p>
+    </div>
+    <div class="card cyan">
+      <h3>You need</h3>
+      <ul class="tight">
+        <li>Docker (Compose v2)</li>
+        <li><code>task</code> — taskfile.dev</li>
+        <li>~8&nbsp;GB RAM for Docker, a few GB disk</li>
+        <li>The workshop AWS credential (Steps 3–5)</li>
+      </ul>
+      <p class="small dim">On the conference network set <code>DATA_MIRROR</code> in
+        <code>.env</code> — pull from the room, not Zenodo.</p>
+    </div>
+  </div>
+  <p class="kicker"><code>task --list</code> shows every command. <b>task up</b> starts the whole stack at once.</p>
+  <aside class="notes">
+    Walk the room here. The two failure modes are: Docker not running, and Task not installed
+    (<code>brew install go-task</code>). Get the mirror URL on the screen and leave it there.
+  </aside>
+</section>
+
+<section class="slide" data-title="Ground rules">
+  <h2>Ground rules</h2>
+  <div class="cols-3">
+    <div class="card"><h3>🐳 Everything is Docker</h3><p class="dim"><code>task up</code> and go. Nothing installs on your laptop but Task.</p></div>
+    <div class="card"><h3>🔓 No auth anywhere</h3><p class="dim">This is a workshop, not production. Every skipped guard is called out when it matters.</p></div>
+    <div class="card"><h3>⏭️ Nobody gets stuck</h3><p class="dim"><code>task checkpoint:restore -- &lt;name&gt;</code> drops in a pre-built warehouse. Ask for the name.</p></div>
+  </div>
+  <div class="callout" style="margin-top:28px">
+    <p>Ask questions <b>the moment</b> something doesn't make sense. Everything here is
+       one layer on top of the last — a gap early gets expensive fast.</p>
+  </div>
+  <aside class="notes">
+    The checkpoint escape hatch matters more than it sounds: it restores the Garage volumes
+    <b>and</b> the Polaris Postgres volume together, so the catalog and files agree. Mention
+    it again at the end of Step 1.
+  </aside>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STEP 0 — THE BIG PICTURE
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<section class="slide center" data-title="Step 0 · Overview">
+  <div class="chip">Step 0</div>
+  <h1>The big picture</h1>
+  <p class="lead dim">What we're building, and the data we're building it on.</p>
+</section>
+
+<section class="slide" data-title="Step 0 · Overview">
+  <div class="chip">Step 0 · Architecture</div>
+  <h2>One stack, five layers</h2>
+  <svg viewBox="0 0 1140 470" width="1140" height="470" style="margin-top:-6px">
+    <defs>
+      <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+        <path d="M0,0 L7,3.2 L0,6.4 z" fill="#5d6c8c"/>
+      </marker>
+      <style>
+        .b  { fill:#131c33; stroke:#24304f; }
+        .t  { fill:#e8edf9; font: 600 17px ui-sans-serif, sans-serif; }
+        .ts { fill:#93a3c4; font: 400 13px ui-sans-serif, sans-serif; }
+        .lb { fill:#5d6c8c; font: 500 12.5px ui-monospace, monospace; letter-spacing:.6px; }
+        .ln { stroke:#5d6c8c; stroke-width:1.4; marker-end:url(#ah); fill:none; }
+      </style>
+    </defs>
+
+    <!-- layer 1 -->
+    <rect class="b" x="20"  y="14" width="200" height="62" rx="10" stroke="#1d4e63"/>
+    <text class="t"  x="40" y="42">ESA telemetry</text><text class="ts" x="40" y="62">pickled channels</text>
+    <rect class="b" x="262" y="14" width="150" height="62" rx="10" stroke="#1d4e63"/>
+    <text class="t"  x="282" y="42">prepare</text><text class="ts" x="282" y="62">→ JSON</text>
+    <rect class="b" x="454" y="14" width="190" height="62" rx="10" stroke="#1d4e63"/>
+    <text class="t"  x="474" y="42">Flink</text><text class="ts" x="474" y="62">batch → Iceberg</text>
+    <path class="ln" d="M222 45 H258"/><path class="ln" d="M414 45 H450"/>
+
+    <!-- layer 2: catalog + storage -->
+    <rect class="b" x="262" y="138" width="180" height="76" rx="10" stroke="#3b3470"/>
+    <text class="t"  x="282" y="168">Polaris</text><text class="ts" x="282" y="188">Iceberg REST catalog</text>
+    <text class="ts" x="282" y="205">owns the pointer</text>
+    <rect class="b" x="482" y="138" width="200" height="76" rx="10" stroke="#3b3470"/>
+    <text class="t"  x="502" y="168">Garage (S3)</text><text class="ts" x="502" y="188">Parquet + metadata</text>
+    <text class="ts" x="502" y="205">the warehouse bucket</text>
+    <path class="ln" d="M520 80 V134"/><text class="lb" x="530" y="112">writes data</text>
+    <path class="ln" d="M470 80 C 400 100, 372 110, 358 134"/><text class="lb" x="236" y="112">commits</text>
+
+    <!-- layer 3: trino -->
+    <rect class="b" x="372" y="266" width="200" height="66" rx="10" stroke="#1c5350"/>
+    <text class="t"  x="392" y="296">Trino</text><text class="ts" x="392" y="316">distributed SQL</text>
+    <path class="ln" d="M368 218 C 380 244, 400 250, 424 262"/><text class="lb" x="238" y="250">where is it?</text>
+    <path class="ln" d="M566 218 C 556 244, 540 250, 520 262"/><text class="lb" x="590" y="250">reads files</text>
+
+    <!-- layer 4: consumers -->
+    <rect class="b" x="118" y="386" width="180" height="66" rx="10" stroke="#1c5350"/>
+    <text class="t"  x="138" y="416">Superset</text><text class="ts" x="138" y="436">charts + SQL Lab</text>
+    <rect class="b" x="640" y="386" width="230" height="66" rx="10" stroke="#5c4a18"/>
+    <text class="t"  x="660" y="416">MCP servers ×3</text><text class="ts" x="660" y="436">trino · esa-adb · superset</text>
+    <path class="ln" d="M300 420 C 340 420, 372 360, 420 336"/><text class="lb" x="300" y="380">SQL</text>
+    <path class="ln" d="M700 384 C 660 356, 600 350, 552 336"/><text class="lb" x="690" y="360">SQL</text>
+
+    <!-- layer 5: chat -->
+    <rect class="b" x="900" y="266" width="210" height="66" rx="10" stroke="#3b3470"/>
+    <text class="t"  x="920" y="296">LibreChat</text><text class="ts" x="920" y="316">chat UI · agents</text>
+    <rect class="b" x="900" y="386" width="210" height="66" rx="10" stroke="#3b3470"/>
+    <text class="t"  x="920" y="416">LiteLLM → Bedrock</text><text class="ts" x="920" y="436">Claude, one gateway</text>
+    <path class="ln" d="M1005 336 V382"/>
+    <path class="ln" d="M898 300 C 850 300, 800 380, 762 382"/><text class="lb" x="800" y="330">MCP</text>
+  </svg>
+  <aside class="notes">
+    Trace it with your finger in this order: files → Flink → <b>two</b> destinations (data to
+    Garage, pointer to Polaris) → Trino asks Polaris where the data is → everyone else talks SQL
+    to Trino. <b>The single idea:</b> the writer and every reader meet at the catalog, and
+    nowhere else.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 0 · Overview">
+  <div class="chip">Step 0 · The arc</div>
+  <h2>Three acts</h2>
+  <div class="cols-3" style="margin-top:6px">
+    <div class="card cyan">
+      <h3 style="color:var(--cyan)">Act 1 · Store</h3>
+      <p class="dim">Flink writes telemetry into <b>Iceberg</b> — a pile of Parquet in object
+        storage that behaves like a real table: schema, snapshots, time travel.</p>
+      <p class="small dim">Steps 1</p>
+    </div>
+    <div class="card teal">
+      <h3 style="color:var(--teal)">Act 2 · Query</h3>
+      <p class="dim">Trino reads that same table natively. Anything that speaks SQL can now
+        analyse the mission — including <b>Superset</b>.</p>
+      <p class="small dim">Step 2</p>
+    </div>
+    <div class="card amber">
+      <h3 style="color:var(--amber)">Act 3 · Converse</h3>
+      <p class="dim">MCP hands the warehouse to a model as <b>tools</b>. "Which channel had the
+        most anomalous March?" stops being a SQL session.</p>
+      <p class="small dim">Steps 3–5</p>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:30px">
+    <p>Each act is useful on its own. That's the point — every layer here is
+       something you'd deploy independently.</p>
+  </div>
+</section>
+
+<section class="slide" data-title="Step 0 · The dataset">
+  <div class="chip">Step 0 · The data</div>
+  <h2>The ESA Anomaly Dataset</h2>
+  <div class="cols wide-left">
+    <div>
+      <p>Real, curated telemetry from <b>three ESA missions</b>, published in 2024 to give the
+         anomaly-detection community something better than synthetic benchmarks.</p>
+      <p>Multi-year time series with <b>expert-labelled anomalies</b> — exactly the shape of data
+         a mission ops team actually stares at.</p>
+      <p class="small dim">© ESA, CC BY 3.0 IGO · arXiv:2406.17826 · zenodo.org/records/15237121</p>
+    </div>
+    <div>
+      <div class="cols" style="gap:16px">
+        <div class="stat"><div class="big-num">224</div><p>channels</p></div>
+        <div class="stat"><div class="big-num">3</div><p>missions</p></div>
+        <div class="stat"><div class="big-num">11.6<span style="font-size:26px">GB</span></div><p>full download</p></div>
+        <div class="stat"><div class="big-num">150<span style="font-size:26px">MB</span></div><p>what we use</p></div>
+      </div>
+      <pre class="sm" style="margin-top:18px">task data:download            <span class="c"># 7 channels</span>
+task data:download -- medium  <span class="c"># Mission1</span>
+task data:download -- full    <span class="c"># everything</span></pre>
+    </div>
+  </div>
+  <p class="kicker">Same schema at every size — the subset is pulled out of the archive with <b>HTTP range requests</b>. Less waiting on conference Wi-Fi.</p>
+  <aside class="notes">
+    Worth a beat: the small subset isn't a toy copy, it's the same files sliced out of the same
+    archive. Everything you do today works at home against a full mission by re-running one command.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 0 · The data">
+  <div class="chip">Step 0 · The data</div>
+  <h2>What the signal actually looks like</h2>
+  <div class="cols wide-right">
+    <div>
+      <p>It's <b>anonymised and quantised</b> — values are normalised, names are
+         <code>channel_41</code>, units are stripped.</p>
+      <p>Most channels are <em>staircases</em>: they sit on a level, then step to another level.</p>
+      <div class="callout"><p>So raw-value thresholds are <b>weak</b>. The information is in
+        <b>phase</b> (which level, in what order) and <b>duration</b> (how long it dwells).</p></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 520 280" width="520" height="280">
+        <rect x="0" y="0" width="520" height="280" rx="12" fill="#070d1d" stroke="#24304f"/>
+        <path d="M30 210 H500" stroke="#24304f"/><path d="M30 30 V210" stroke="#24304f"/>
+        <path d="M40 90 H120 V60 H190 V95 H250 V88 H300 V180 H392 V92 H470"
+              fill="none" stroke="#67e8f9" stroke-width="2.5" stroke-linejoin="round"/>
+        <rect x="300" y="40" width="92" height="170" fill="#fda4af" opacity=".13"/>
+        <path d="M300 40 V210 M392 40 V210" stroke="#fda4af" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="300" y="234" fill="#fda4af" font-size="13" font-weight="600" font-family="ui-sans-serif, sans-serif">stuck ~7.6 h</text>
+        <text x="42" y="200" fill="#5d6c8c" font-size="12" font-family="ui-monospace, monospace">nominal levels</text>
+        <text x="30" y="264" fill="#5d6c8c" font-size="12" font-family="ui-monospace, monospace">value 0.64 — well inside the normal 0.61–0.98 range</text>
+      </svg>
+    </div>
+  </div>
+  <p class="kicker">This drawing <b>is</b> the labelled March-2000 anomaly on channel_41. Remember it — we come back to it in Step 5.</p>
+  <aside class="notes">
+    Plant the seed now and it pays off two hours later. The value 0.64 is <b>well inside</b> the
+    channel's normal range, so "alert if value &lt; X" sees nothing. What's abnormal is that it
+    went to a level it rarely visits and <b>stayed</b>. Humans spot this instantly on a chart;
+    thresholds never do.
+  </aside>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STEP 1 — INGEST
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<section class="slide center" data-title="Step 1 · Ingest" data-accent="ingest">
+  <div class="chip">Step 1</div>
+  <h1>Ingest</h1>
+  <p class="lead dim">Raw telemetry files → Flink → an Iceberg table you can query.<br/>
+     On the way: what a table format <em>is</em>, and why the catalog matters.</p>
+</section>
+
+<section class="slide" data-title="Step 1 · Ingest" data-accent="ingest">
+  <div class="chip">Step 1 · Iceberg</div>
+  <h2>Iceberg is a spec for <span class="thin">keeping track of files</span></h2>
+  <div class="cols wide-left">
+    <div>
+      <pre class="sm">s3://warehouse/esa_adb/readings/
+├── metadata/
+│   ├── <b>v3.metadata.json</b>      <span class="c">← schema, partitions,</span>
+│   │                          <span class="c">  snapshot list</span>
+│   ├── snap-8231….avro       <span class="c">← manifest list</span>
+│   └── 92f1…-m0.avro         <span class="c">← manifests: which</span>
+│                              <span class="c">  files + their stats</span>
+└── data/
+    └── ts_month=2000-03/
+        └── 00000-0-….parquet <span class="c">← the rows</span></pre>
+    </div>
+    <div>
+      <div class="card cyan"><h3>Reading</h3><p class="dim">Find the current
+        <code>metadata.json</code> → a snapshot → manifests → read only the files that
+        survive your filters.</p></div>
+      <div class="card cyan" style="margin-top:14px"><h3>Writing</h3><p class="dim">Write new
+        Parquet → write new metadata that includes it → <b>atomically swap</b> the
+        "current metadata" pointer.</p></div>
+      <p class="small dim" style="margin-top:14px">Readers never see a half-finished write.
+        That pointer swap <b>is</b> the commit.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    Resist the urge to call it a database. It's a <b>convention</b> that several engines agree
+    on. Everything magical about Iceberg falls out of "the current state of a table is one file
+    path, and changing it is atomic."
+  </aside>
+</section>
+
+<section class="slide center" data-title="Step 1 · Ingest" data-accent="ingest">
+  <div class="chip">Step 1 · Iceberg</div>
+  <h2>Two consequences worth pausing on</h2>
+  <div class="cols" style="margin-top:10px">
+    <div class="card cyan">
+      <h3>1 · Snapshots are free history</h3>
+      <p class="dim">Old metadata still describes the old file set. Nothing was overwritten —
+        so <b>time travel</b> and <b>rollback</b> aren't features anyone had to build. They're
+        what's left over.</p>
+    </div>
+    <div class="card amber">
+      <h3>2 · Somebody has to own the pointer</h3>
+      <p class="dim">An atomic swap needs one coordinator every writer and reader agrees on.
+        Object storage alone can't do it.</p>
+      <p><b>That coordinator is the catalog.</b></p>
+    </div>
+  </div>
+  <p class="kicker">Everything in the next three slides follows from consequence #2.</p>
+</section>
+
+<section class="slide" data-title="Step 1 · Polaris" data-accent="ingest">
+  <div class="chip">Step 1 · Catalog</div>
+  <h2>Apache Polaris</h2>
+  <p class="lead">An implementation of the <b>Iceberg REST catalog</b> protocol. Small service,
+     critical job:</p>
+  <pre class="sm" style="border-left-color:var(--violet)">esa_adb.readings  →  "current metadata is v3.metadata.json"
+                  →  <b>and I perform the atomic swap on commit</b></pre>
+  <div class="cols" style="margin-top:6px">
+    <div>
+      <p>Flink (the writer) and Trino (the reader, in 15 minutes) both speak the REST protocol
+         to the <em>same</em> Polaris. So they agree on what the table is at every moment —
+         two engines, <b>zero coordination</b> between them.</p>
+      <p class="small dim" style="margin-top:-4px">That handoff is the whole reason lakehouse
+        architectures work.</p>
+    </div>
+    <div class="card">
+      <h3>What we skipped</h3>
+      <p class="dim">In production Polaris also does access control and vends <b>scoped,
+        temporary</b> storage credentials per engine.</p>
+      <p class="dim">We give every engine the same static Garage key. One less moving part —
+        but it's real S3 object storage, exactly like a cloud deployment.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    If someone asks "why not just Hive Metastore / a file in S3?" — file-based catalogs can't do
+    the atomic swap safely across engines on plain S3, and Hive drags a Thrift service + RDBMS
+    with a much worse API. REST catalog is where the ecosystem converged.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 1 · Flink" data-accent="ingest">
+  <div class="chip">Step 1 · Flink</div>
+  <h2>Why Flink for a batch load?</h2>
+  <div class="cols wide-left">
+    <div>
+      <p>Because it isn't one. Our job <em>streams</em> rows into Iceberg: the sink commits a
+         new snapshot <b>at every checkpoint</b>, so the table grows in visible increments while
+         the job runs.</p>
+      <p>The file source is <b>bounded</b> — once every file is read, the job ends by itself.</p>
+      <div class="callout"><p>Point the same SQL at a live feed and it simply never ends.
+        <b>Batch is streaming over a finite source.</b></p></div>
+    </div>
+    <div class="card cyan">
+      <h3>One prep step first</h3>
+      <p class="dim">ESA channels ship as <b>pickled pandas DataFrames</b>. Flink can't read
+        those, so <code>task data:prepare</code> converts each to newline-delimited JSON under
+        <code>data/prepared/</code>.</p>
+      <p class="dim">Same step converts the dataset's metadata into three dimension tables:</p>
+      <ul class="tight" style="margin-bottom:0">
+        <li><code>channels</code> — what each one measures</li>
+        <li><code>labels</code> — the anomaly windows</li>
+        <li><code>anomaly_types</code> — the taxonomy</li>
+      </ul>
+    </div>
+  </div>
+  <p class="kicker">Those three tables are what make Step 2's views and Step 5's investigation possible.</p>
+</section>
+
+<section class="slide" data-title="Step 1 · Do it" data-accent="ingest">
+  <div class="chip">Step 1 · Do it</div>
+  <h2>Run the ingest</h2>
+  <pre>task up:ingest        <span class="c"># garage, polaris, flink — and init the S3 bucket</span>
+task data:prepare     <span class="c"># pickled channels -> JSON</span>
+task catalog:create   <span class="c"># create the 'workshop' catalog in Polaris</span>
+task flink:job        <span class="c"># run the ingest — blocks until loaded</span></pre>
+  <div class="cols" style="margin-top:4px">
+    <div class="card cyan">
+      <h3>Watch it happen</h3>
+      <p class="dim"><b>Flink UI</b> → localhost:8081 — the job reading files and writing the
+        sink, one snapshot per checkpoint.</p>
+      <pre class="xs" style="margin:10px 0 0">docker compose exec garage \
+  /garage bucket info warehouse</pre>
+      <p class="small dim" style="margin-top:10px">The metadata and Parquet objects, in plain sight.</p>
+    </div>
+    <div class="card">
+      <h3>Read the job — it's ~40 lines</h3>
+      <p class="dim"><code>flink/sql/ingest.sql</code>:</p>
+      <ul class="tight">
+        <li>one statement defines the prepared JSON as a table</li>
+        <li>one defines the Iceberg catalog via Polaris</li>
+        <li>one <code>INSERT INTO … SELECT</code> connects them</li>
+      </ul>
+    </div>
+  </div>
+  <aside class="notes">
+    While it runs is your best window for questions — use it. Put the Flink UI on the projector
+    and let them watch the record count climb. Call out a checkpoint landing = a new Iceberg
+    snapshot they'll query by ID in ten minutes.
+  </aside>
+</section>
+
+<section class="slide center" data-title="Step 1 · Checkpoint" data-accent="ingest">
+  <div class="chip">Step 1 · Checkpoint</div>
+  <h2>Everybody loaded?</h2>
+  <pre style="font-size:24px">task rowcount</pre>
+  <div class="callout">
+    <p>Behind, or don't want to wait? <b>task checkpoint:restore -- &lt;name&gt;</b> drops in a
+       pre-built warehouse — the Iceberg files <em>and</em> the Polaris catalog that points at
+       them — and you're querying immediately.</p>
+  </div>
+  <p class="kicker">You now have a real table in real object storage, written by one engine and
+     owned by a catalog. Next: someone else reads it.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STEP 2 — QUERY
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<section class="slide center" data-title="Step 2 · Query" data-accent="query">
+  <div class="chip">Step 2</div>
+  <h1>Query</h1>
+  <p class="lead dim">The payoff for choosing an open table format:<br/><em>any</em> engine can read it.</p>
+</section>
+
+<section class="slide" data-title="Step 2 · Trino" data-accent="query">
+  <div class="chip">Step 2 · Trino</div>
+  <h2>Trino in one minute</h2>
+  <div class="cols wide-left">
+    <div>
+      <p>A distributed SQL engine that <b>owns no storage</b>. You give it <em>catalogs</em>
+         (connector + config) and it federates queries across them.</p>
+      <p>Our <code>iceberg</code> catalog points at the same Polaris that Flink writes to.
+         Trino asks "where's the current metadata for <code>esa_adb.readings</code>?", gets a
+         pointer, and plans from there.</p>
+      <div class="callout"><p><b>Polaris is the handoff point</b> between the writer and every reader.</p></div>
+    </div>
+    <div>
+      <pre class="sql sm">task trino    <span class="c"># interactive CLI</span></pre>
+      <pre class="sql sm"><span class="k">SHOW</span> CATALOGS;
+<span class="k">SHOW</span> SCHEMAS <span class="k">FROM</span> iceberg;
+
+<span class="k">SELECT</span> count(*) <span class="k">FROM</span> iceberg.esa_adb.readings;
+
+<span class="k">SELECT</span> channel, count(*) <span class="k">AS</span> samples,
+       avg(value) <span class="k">AS</span> mean
+<span class="k">FROM</span> iceberg.esa_adb.readings
+<span class="k">GROUP BY</span> channel
+<span class="k">ORDER BY</span> samples <span class="k">DESC</span> <span class="k">LIMIT</span> 10;</pre>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Step 2 · The planner" data-accent="query">
+  <div class="chip">Step 2 · The planner</div>
+  <h2>How the planner exploits Iceberg</h2>
+  <div class="cols wide-left">
+    <div>
+      <pre class="sql sm"><span class="k">EXPLAIN</span>
+<span class="k">SELECT</span> avg(value) <span class="k">FROM</span> iceberg.esa_adb.readings
+<span class="k">WHERE</span> <span class="hl">ts_month = <span class="s">'2000-03'</span></span>;</pre>
+      <p>Read the <b>estimated rows</b> on the table scan. Now widen the filter —
+         <code>BETWEEN '2000-03' AND '2000-09'</code> — and explain again.</p>
+      <p>The scan tracks the filter because Trino reads Iceberg's metadata and
+         <b>prunes partitions</b> and <b>skips files</b> before touching a byte of Parquet.</p>
+    </div>
+    <div class="card teal">
+      <h3>Try it for real</h3>
+      <ul class="tight">
+        <li>Drop <code>EXPLAIN</code>, compare wall-clock</li>
+        <li>Trino UI → <b>localhost:8080/ui/</b> → the query detail shows <b>splits</b> and
+            <b>bytes read</b></li>
+        <li>Filter on <code>ts</code> instead: column stats still skip files — but
+            <code>ts_month</code> prunes whole <b>partitions</b> outright</li>
+      </ul>
+      <p class="small dim" style="margin-top:12px">Partitioning isn't magic. It's min/max stats
+        you were going to write down anyway.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    The demo that lands: run the narrow and wide query back to back and read the bytes-read
+    number out loud. It's the difference between "trust me, it's efficient" and seeing it.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 2 · Metadata" data-accent="query">
+  <div class="chip">Step 2 · Time travel</div>
+  <h2>Tables <span class="thin">about</span> the table</h2>
+  <pre class="sql"><span class="k">SELECT</span> * <span class="k">FROM</span> iceberg.esa_adb.<span class="s">"readings$snapshots"</span>;
+
+<span class="k">SELECT</span> file_path, record_count, file_size_in_bytes
+<span class="k">FROM</span> iceberg.esa_adb.<span class="s">"readings$files"</span> <span class="k">LIMIT</span> 10;
+
+<span class="k">SELECT</span> count(*) <span class="k">FROM</span> iceberg.esa_adb.readings
+<span class="k">FOR VERSION AS OF</span> <span class="hl">&lt;snapshot_id&gt;</span>;</pre>
+  <div class="callout">
+    <p>Every Flink checkpoint you watched in Step 1 is <b>a row in that snapshots table</b>.
+       Pick an early one and count rows — you're reading the table as it was mid-ingest.</p>
+  </div>
+  <p class="kicker">No backup, no restore, no extra storage. Just old metadata nobody deleted.</p>
+</section>
+
+<section class="slide" data-title="Step 2 · Views" data-accent="query">
+  <div class="chip">Step 2 · Views</div>
+  <h2>Enrich once, reuse everywhere</h2>
+  <p><code>readings</code> is a bare fact table: <code>channel, ts, value</code>. Step 1 also
+     loaded <code>channels</code>, <code>labels</code> and <code>anomaly_types</code>.
+     Join them <b>once</b>, behind a name:</p>
+  <pre class="sql sm">task trino:views</pre>
+  <div class="cols-3">
+    <div class="card teal"><h3><code>readings_enriched</code></h3><p class="dim">readings ⋈ channel
+      metadata — subsystem, physical unit, group.</p></div>
+    <div class="card teal"><h3><code>anomalies</code></h3><p class="dim">the labelled windows +
+      their type, with ISO-8601 strings parsed into real timestamps.</p></div>
+    <div class="card rose"><h3><code>labeled_readings</code></h3><p class="dim"><b>The payoff.</b>
+      Every reading tagged with whether it falls inside a labelled anomaly.</p></div>
+  </div>
+  <div class="callout" style="margin-top:22px">
+    <p><code>labeled_readings</code> is a <b>range join</b> — each reading matched to any window
+      covering its timestamp. That one view powers "colour the anomalies" in Superset
+      <em>and</em> "grade yourself" for the agent in Step 5.</p>
+  </div>
+</section>
+
+<section class="slide" data-title="Step 2 · Superset" data-accent="query">
+  <div class="chip">Step 2 · Superset</div>
+  <h2>Now make a picture of it</h2>
+  <div class="cols wide-right">
+    <div>
+      <pre class="sm">task up:query</pre>
+      <p class="small dim">localhost:8088 · <b>admin / admin</b></p>
+      <p>Pre-wired: the Trino connection <em>and</em> the <code>readings</code> dataset are
+         already registered. Chart immediately.</p>
+      <p class="small dim">By hand it's <b>Settings → Database Connections</b> and
+        <b>Datasets → + Dataset</b>.</p>
+    </div>
+    <div>
+      <ol class="tight">
+        <li><b>SQL Lab</b> — run one query to prove connectivity.</li>
+        <li><b>Chart</b> on <code>readings</code>: time-series line, X = <code>ts</code> (day),
+            Y = <code>AVG(value)</code>, dimension = <code>channel</code>. Filter to 3–4 channels.</li>
+        <li>Add <code>labeled_readings</code> as a dataset, chart <code>channel_41</code> with
+            <code>is_anomaly</code> as the colour dimension — <b>the anomalies light up</b>.</li>
+        <li>Put both on a dashboard.</li>
+      </ol>
+    </div>
+  </div>
+  <p class="kicker">Then open <b>SQL Lab → Query History</b>: Superset is issuing the same SQL you
+     wrote by hand, and the planner prunes for dashboards exactly like it did for you.</p>
+  <aside class="notes">
+    Step 3 of the list is the one to make sure everyone gets — seeing the labelled anomaly
+    highlighted on a real chart is what makes Step 5's "the agent found this by itself" land.
+  </aside>
+</section>
+
+<section class="slide center" data-title="Break" data-accent="query">
+  <h1 style="font-size:96px">☕ Break</h1>
+  <p class="lead">Fifteen minutes.</p>
+  <div class="card amber" style="max-width:760px">
+    <h3>While you're up</h3>
+    <p class="dim">Put the workshop <b>AWS credential</b> into <code>.env</code> now — copy
+      <code>.env.example</code> if you haven't. Step 3 needs it the moment we're back.</p>
+  </div>
+  <p class="kicker">When we return: we stop writing the SQL ourselves.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STEP 3 — CHAT
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<section class="slide center" data-title="Step 3 · Chat" data-accent="chat">
+  <div class="chip">Step 3</div>
+  <h1>Chat</h1>
+  <p class="lead dim">Put a model in front of the warehouse.<br/>
+     This step is <em>plumbing</em> — Step 4 is where it gets interesting.</p>
+</section>
+
+<section class="slide" data-title="Step 3 · The pieces" data-accent="chat">
+  <div class="chip">Step 3 · The pieces</div>
+  <h2>Three boxes</h2>
+  <div class="cols-3">
+    <div class="card violet"><h3>LibreChat</h3><p class="dim">Open source ChatGPT-style UI.
+      Multi-user, any provider — and the reason we picked it: <b>first-class MCP support</b>.</p></div>
+    <div class="card violet"><h3>LiteLLM</h3><p class="dim">An LLM gateway. One
+      OpenAI-compatible HTTP API in front of 100+ providers, Bedrock included.</p></div>
+    <div class="card violet"><h3>AWS Bedrock</h3><p class="dim">Where Claude actually runs,
+      on the shared workshop credential.</p></div>
+  </div>
+  <pre style="margin-top:28px">task up:chat     <span class="c"># litellm, mongodb, librechat</span></pre>
+  <p class="kicker">LibreChat → <b>localhost:3080</b>. Register any account — it's your local
+     instance, email verification is off.</p>
+</section>
+
+<section class="slide" data-title="Step 3 · LiteLLM" data-accent="chat">
+  <div class="chip">Step 3 · A real trade-off</div>
+  <h2>Do we actually need LiteLLM?</h2>
+  <p class="lead">Honest answer: <b>for this workshop, no.</b> LibreChat speaks Bedrock natively.
+     We could delete a whole service.</p>
+  <p>We keep it on purpose:</p>
+  <div class="cols-3">
+    <div class="card"><h3>1 · One place for the key</h3><p class="dim">The AWS credential lives
+      in LiteLLM's environment and <b>nowhere else</b>. Every client gets a scoped master key
+      instead.</p></div>
+    <div class="card"><h3>2 · A control point</h3><p class="dim">Shared credential + 40
+      attendees ⇒ you want per-key <b>rate limits and spend tracking</b>. A gateway is where
+      that lives.</p></div>
+    <div class="card"><h3>3 · Swappability</h3><p class="dim">Point <code>claude-sonnet</code>
+      at a different provider; <b>no client changes</b>. Apps ask for a name, not an
+      infrastructure.</p></div>
+  </div>
+  <p class="kicker">The trade: one more container in exchange for credential isolation and
+     control. Rebuilding this at home, alone? <b>Skip it.</b></p>
+  <aside class="notes">
+    Worth being explicit that we're showing them a decision, not a best practice. Naming the
+    cost of your own architecture buys enormous credibility with an engineering audience.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 3 · Prove it" data-accent="chat">
+  <div class="chip">Step 3 · Prove it</div>
+  <h2>The chat UI is <span class="thin">this one call</span></h2>
+  <pre class="sm">curl -s http://localhost:4000/v1/chat/completions \
+  -H <span class="s">"Authorization: Bearer sk-workshop"</span> -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"model": "claude-sonnet", "messages": [{"role": "user", "content": "ping"}]}'</span></pre>
+  <p class="lead">That same request, made by LibreChat on your behalf, is <em>everything</em> the
+     chat window is doing.</p>
+  <p>Open a new chat → <b>Workshop Models → claude-sonnet</b> → say hello.</p>
+  <p class="kicker">If this curl fails, the UI will too — always debug at this layer first.</p>
+</section>
+
+<section class="slide center" data-title="Step 3 · The gap" data-accent="chat">
+  <div class="chip">Step 3 · The gap</div>
+  <h2>Now ask it something real</h2>
+  <div class="ask">"How many telemetry samples are in the readings table?"</div>
+  <p class="lead">It will invent a number, or admit it has no idea. It has <b>no connection</b>
+     to our warehouse whatsoever — the model only knows what's in its prompt.</p>
+  <div class="callout">
+    <p>Giving it a way to <em>find out</em> — tools it can call, with results fed back into the
+       conversation — is exactly what <b>MCP</b> standardises.</p>
+  </div>
+  <aside class="notes">
+    <b>Do this live.</b> Actually ask it and read the hallucinated number out loud. Thirty
+    seconds of theatre that makes the next 40 minutes obvious. Bonus: ask it twice and get two
+    different numbers.
+  </aside>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STEP 4 — MCP
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<section class="slide center" data-title="Step 4 · MCP" data-accent="mcp">
+  <div class="chip">Step 4</div>
+  <h1>Build an MCP server</h1>
+  <p class="lead dim">A standard way to hand a model <em>tools</em>:<br/>
+     functions it can call, with typed inputs and outputs.</p>
+</section>
+
+<section class="slide" data-title="Step 4 · Why" data-accent="mcp">
+  <div class="chip">Step 4 · Why</div>
+  <h2>Why not just paste the SQL results in?</h2>
+  <p class="lead">You could. But a server gives the model <em>agency with guardrails</em>.</p>
+  <div class="cols">
+    <div class="card amber">
+      <h3>The model decides</h3>
+      <p class="dim"><b>Which</b> tool, <b>when</b>, and <b>how often</b>. It can list tables,
+        read a schema, run a query, notice the answer is wrong, and refine.</p>
+      <p><b>That loop is where the magic is.</b></p>
+    </div>
+    <div class="card amber">
+      <h3>You decide what's possible</h3>
+      <p class="dim">Our server permits <b>read-only</b> queries and caps result sizes.</p>
+      <p>The model can't <code>DROP TABLE</code> — even if asked nicely.</p>
+    </div>
+  </div>
+  <p class="kicker">Capability and constraint in the same object. That's the whole design brief.</p>
+</section>
+
+<section class="slide" data-title="Step 4 · The server" data-accent="mcp">
+  <div class="chip">Step 4 · The server</div>
+  <h2>A tool is just a function</h2>
+  <div class="cols wide-left">
+    <div>
+      <pre class="py sm"><span class="k">from</span> fastmcp <span class="k">import</span> FastMCP
+
+mcp = FastMCP(<span class="s">"telemetry-trino"</span>)
+
+<span class="hl">@mcp.tool</span>
+<span class="k">def</span> <b>query</b>(sql: str) -> dict:
+    <span class="s">"""Run a read-only SQL query against
+    the telemetry warehouse. ..."""</span>
+    ...
+
+mcp.run(transport=<span class="s">"http"</span>, port=<span class="s">8000</span>)</pre>
+      <p class="small dim">The whole thing is ~150 lines — <code>mcp-server/server.py</code>.</p>
+    </div>
+    <div>
+      <div class="card amber"><h3>1 · Signature → schema</h3><p class="dim">FastMCP turns the
+        type hints into JSON Schema and the <b>docstring into the tool description</b>. No
+        boilerplate.</p></div>
+      <div class="card amber" style="margin-top:12px"><h3>2 · Docstrings are prompts</h3>
+        <p class="dim">The model reads them to decide when and how to call. <code>query</code>'s
+        docstring tells it to <b>aggregate rather than pull raw rows</b> — watch it obey.</p></div>
+    </div>
+  </div>
+  <aside class="notes">
+    Point 2 is the one people underestimate. Open the actual docstring in the repo and read it
+    aloud — it's written like a prompt, because it is one. Bad docstring = tool never gets called,
+    or gets called wrong. This is prompt engineering wearing an API's clothes.
+  </aside>
+</section>
+
+<section class="slide center" data-title="Step 4 · Design" data-accent="mcp">
+  <div class="chip">Step 4 · The design question</div>
+  <h2>Specific beats general <span class="thin">— until it doesn't</span></h2>
+  <div class="cols">
+    <div class="card">
+      <h3><code>query(sql)</code></h3>
+      <p class="dim">Maximum flexibility. The model writes its own SQL — and can get it subtly,
+        confidently wrong.</p>
+    </div>
+    <div class="card teal">
+      <h3><code>channel_summary(channel)</code></h3>
+      <p class="dim">One job, one fixed, <b>correct</b> SQL statement. Reliable every time —
+        and useless for anything else.</p>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:26px">
+    <p>Watch the model's behaviour change between them. <b>Real MCP server design is choosing
+       that mix</b> — and it's the single most consequential decision you'll make.</p>
+  </div>
+</section>
+
+<section class="slide" data-title="Step 4 · Wire it up" data-accent="mcp">
+  <div class="chip">Step 4 · Wire it up</div>
+  <h2>Run it</h2>
+  <pre>task up:mcp     <span class="c"># build + start the server, register it in LibreChat</span></pre>
+  <div class="cols wide-left">
+    <div>
+      <pre class="yaml sm"><span class="c"># librechat/librechat.yaml</span>
+mcpServers:
+  telemetry:
+    type: streamable-http
+    url: http://mcp-server:8000/mcp</pre>
+      <p>Reload LibreChat, open a new chat, and enable the <b>telemetry</b> server in the tools
+         menu.</p>
+    </div>
+    <div class="card amber">
+      <h3>Watch the tool-call panel</h3>
+      <p class="dim">You'll see the model list tables, describe schemas, and iterate on SQL —
+        the same workflow a human analyst follows, at speed.</p>
+      <p class="small dim">If it doesn't appear: <code>docker compose restart librechat</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Step 4 · Try it" data-accent="mcp">
+  <div class="chip">Step 4 · Try it</div>
+  <h2>Ask for things that need <span class="thin">several</span> tool calls</h2>
+  <ul class="plain">
+    <li class="ask" style="font-size:22px">"What tables and views are available, and what does the readings table look like?"</li>
+    <li class="ask" style="font-size:22px">"Summarise channel_41. Anything unusual about its value range?"</li>
+    <li class="ask" style="font-size:22px">"Which channel has the most samples in March 2000? Show a monthly count for that channel across the whole year."</li>
+    <li class="ask" style="font-size:22px">"Using labeled_readings, how many anomaly windows does channel_41 have, and what's the average value inside anomalies vs outside?"</li>
+    <li class="ask" style="font-size:22px">"Pick one labelled anomaly on channel_41 and show me the readings in the hour around it."</li>
+  </ul>
+  <aside class="notes">
+    Give them 10 minutes to play before the exercises. Encourage them to <b>read the SQL the
+    model writes</b> — it's frequently good, occasionally wrong in an instructive way, and
+    arguing with it is the best possible exercise.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 4 · Exercises" data-accent="mcp">
+  <div class="chip">Step 4 · Your turn</div>
+  <h2>Exercises</h2>
+  <div class="cols-3">
+    <div class="card teal">
+      <h3>1 · Add a tool</h3>
+      <p class="dim"><code>list_channels()</code> → distinct channels and their sample counts.
+        Restart, then watch the model start reaching for it unprompted.</p>
+    </div>
+    <div class="card teal">
+      <h3>2 · Add an anomaly tool</h3>
+      <p class="dim"><code>anomalies_for(channel)</code> → the windows and their categories, so
+        it stops rewriting that join every time. Then ask it to <em>investigate</em> one.</p>
+    </div>
+    <div class="card rose">
+      <h3>3 · Break it on purpose</h3>
+      <p class="dim">Read the read-only check. Think about what else production needs:
+        <b>row-level auth, query timeouts, cost caps</b>.</p>
+      <p class="small dim">(Don't actually remove it.)</p>
+    </div>
+  </div>
+  <p class="kicker">The same server runs against Claude Desktop, Claude Code, or anything else
+     that speaks MCP. <b>That's the point of a protocol.</b></p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STEP 5 — THE AGENT
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<section class="slide center" data-title="Step 5 · Agent" data-accent="agent">
+  <div class="chip">Step 5 · Capstone</div>
+  <h1>The telemetry<br/>analysis agent</h1>
+  <p class="lead dim">Explore. Detect. Visualise. <em>Then grade itself.</em></p>
+</section>
+
+<section class="slide" data-title="Step 5 · Architecture" data-accent="agent">
+  <div class="chip">Step 5 · What we're building</div>
+  <h2>Three focused servers, one conversation</h2>
+  <svg viewBox="0 0 1140 458" width="1140" height="458">
+    <defs>
+      <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+        <path d="M0,0 L7,3.2 L0,6.4 z" fill="#5d6c8c"/>
+      </marker>
+      <style>
+        .b2  { fill:#131c33; stroke:#24304f; }
+        .t2  { fill:#e8edf9; font: 650 18px ui-sans-serif, sans-serif; }
+        .ts2 { fill:#93a3c4; font: 400 13.5px ui-sans-serif, sans-serif; }
+        .lb2 { fill:#5d6c8c; font: 500 12.5px ui-monospace, monospace; }
+        .ln2 { stroke:#5d6c8c; stroke-width:1.4; marker-end:url(#ah2); fill:none; }
+      </style>
+    </defs>
+    <rect class="b2" x="390" y="10" width="360" height="72" rx="12" stroke="#5e2c38"/>
+    <text class="t2" x="416" y="42">LibreChat Agent</text>
+    <text class="ts2" x="416" y="64">Claude Sonnet on Bedrock · picks its own tools</text>
+
+    <rect class="b2" x="40"  y="150" width="310" height="96" rx="12" stroke="#1c5350"/>
+    <text class="t2" x="64" y="182">trino-mcp <tspan class="ts2">· explore</tspan></text>
+    <text class="ts2" x="64" y="206">query / list_tables / describe</text>
+    <text class="ts2" x="64" y="228">dataset-agnostic — point it anywhere</text>
+
+    <rect class="b2" x="400" y="150" width="340" height="96" rx="12" stroke="#5c4a18"/>
+    <text class="t2" x="424" y="182">esa-adb <tspan class="ts2">· detect</tspan></text>
+    <text class="ts2" x="424" y="206">navigation + six scored detectors</text>
+    <text class="ts2" x="424" y="228">the domain layer</text>
+
+    <rect class="b2" x="790" y="150" width="310" height="96" rx="12" stroke="#3b3470"/>
+    <text class="t2" x="814" y="182">superset-mcp <tspan class="ts2">· visualise</tspan></text>
+    <text class="ts2" x="814" y="206">intent → chart URL</text>
+    <text class="ts2" x="814" y="228">pure presentation</text>
+
+    <path class="ln2" d="M480 84 C 400 110, 260 118, 200 146"/>
+    <path class="ln2" d="M570 84 V146"/>
+    <path class="ln2" d="M660 84 C 740 110, 880 118, 940 146"/>
+    <text class="lb2" x="322" y="140">tools</text><text class="lb2" x="584" y="122">tools</text>
+    <text class="lb2" x="782" y="140">tools</text>
+
+    <rect class="b2" x="300" y="300" width="200" height="58" rx="10" stroke="#1c5350"/>
+    <text class="t2" x="324" y="335">Trino</text>
+    <rect class="b2" x="660" y="300" width="200" height="58" rx="10" stroke="#3b3470"/>
+    <text class="t2" x="684" y="335">Superset</text>
+    <path class="ln2" d="M195 250 C 210 278, 272 288, 316 298"/>
+    <path class="ln2" d="M600 250 C 582 274, 504 288, 466 298"/>
+    <path class="ln2" d="M945 250 C 936 274, 830 288, 792 298"/>
+    <path class="ln2" d="M656 329 H506"/><text class="lb2" x="548" y="320">SQL</text>
+
+    <rect class="b2" x="400" y="392" width="340" height="52" rx="10" stroke="#1d4e63"/>
+    <text class="t2" x="424" y="424">Iceberg <tspan class="ts2">· esa_adb, on Garage</tspan></text>
+    <path class="ln2" d="M400 360 C 412 378, 470 384, 508 389"/>
+  </svg>
+  <aside class="notes">
+    Emphasise the shape, not the boxes: the agent sees <b>one flat menu of 19 tools</b> and has no
+    idea there are three servers. The split is for <b>you</b> — so you can lift trino-mcp and
+    superset-mcp into a different project unchanged.
+  </aside>
+</section>
+
+<section class="slide center" data-title="Step 5 · Why three" data-accent="agent">
+  <div class="chip">Step 5 · The pattern</div>
+  <h2>Why three servers and not one?</h2>
+  <div class="cols-3">
+    <div class="card teal"><h3><code>trino-mcp</code></h3><p class="dim">Dataset-agnostic. Point
+      it at <em>any</em> catalog and it works. Zero ESA in it.</p></div>
+    <div class="card amber"><h3><code>esa-adb</code></h3><p class="dim">The domain layer —
+      telemetry navigation and the phase-aware detectors. All the specific knowledge lives here.</p></div>
+    <div class="card violet"><h3><code>superset-mcp</code></h3><p class="dim">Pure visualisation.
+      Knows nothing about telemetry, everything about charts.</p></div>
+  </div>
+  <div class="callout" style="margin-top:28px">
+    <p><b>Composing small, focused MCP servers is the pattern to internalise.</b> The agent
+      doesn't care — it just sees a menu. You care, because two of these three are reusable
+      tomorrow.</p>
+  </div>
+</section>
+
+<section class="slide" data-title="Step 5 · Gotchas" data-accent="agent">
+  <div class="chip">Step 5 · Two guards we had to clear</div>
+  <h2>These <span class="thin">will</span> bite you at home</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>1 · DNS-rebinding Host check</h3>
+      <p class="dim">MCP's streamable-http transport only accepts <code>localhost</code> in the
+        <code>Host</code> header, and returns <b>421 Misdirected Request</b> otherwise.</p>
+      <p class="dim">Our servers reach each other by compose hostname, so:
+        <code>host_origin_protection=False</code> — fine on a trusted local network.</p>
+    </div>
+    <div class="card">
+      <h3>2 · LibreChat SSRF allowlist</h3>
+      <p class="dim">v0.8.7 blocks MCP URLs that resolve to <b>private IPs</b> unless the domain
+        is allow-listed.</p>
+      <pre class="yaml xs" style="margin-top:12px">mcpSettings:
+  allowedDomains:
+    [mcp-server, trino-mcp, superset-mcp]</pre>
+    </div>
+  </div>
+  <p class="kicker">Both are <b>real security features</b> doing their job. Know why you're
+     turning them off, and where you wouldn't.</p>
+</section>
+
+<section class="slide" data-title="Step 5 · Build it" data-accent="agent">
+  <div class="chip">Step 5 · Build it</div>
+  <h2>Assemble the agent <span class="thin">— LibreChat v0.8.7</span></h2>
+  <pre class="sm">task up:mcp     <span class="c"># builds + starts all three servers, reloads LibreChat</span></pre>
+  <div class="cols">
+    <div>
+      <ol class="tight">
+        <li>Pick <b>Agents</b> from the endpoint menu → open the <b>Agent Builder</b>.</li>
+        <li><b>Name:</b> Telemetry Anomaly Analyst</li>
+        <li><b>Model:</b> Bedrock (LiteLLM) → <code>claude-sonnet-5</code></li>
+        <li><b>Instructions:</b> the methodology prompt (next slide).</li>
+        <li><b>Tools:</b> enable <b>esa-adb</b>, <b>trino</b>, <b>superset</b>.</li>
+        <li><b>Save</b>, then <b>Share</b> so everyone can use it.</li>
+      </ol>
+    </div>
+    <div class="card rose">
+      <h3>Two notes worth knowing</h3>
+      <p class="dim">Use a <b>strong tool-caller</b>. DeepSeek-R1 is available, but reasoning
+        models are weaker at the tool loop — use it to <em>interpret</em> results, not drive them.</p>
+      <p class="dim">v0.8.7 has <b>no API to create an agent</b>. Sharing one you built is the
+        reproducible path — not export/import.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Step 5 · The prompt" data-accent="agent">
+  <div class="chip">Step 5 · The instructions</div>
+  <h2>A method, not a personality</h2>
+  <pre class="xs">You are a satellite-telemetry anomaly analyst. You have three MCP tool groups: trino (generic SQL
+exploration), esa-adb (telemetry navigation + scored anomaly detectors), and superset (turn intent
+into charts). Read the about://dataset resource first if your client exposes it.
+
+<b>The data is anonymized, quantized "staircase" telemetry — raw-value thresholds are weak; reason
+about PHASE (which level, in what order) and DURATION (dwell).</b>
+
+Method:
+1. <b>Orient</b>:      list_channels / channel_summary; note the time span.
+2. <b>Detect</b>:      run phase_anomaly, plateau, data_gaps, stl_residual, cadence over a broad window.
+                Scores are relative — they mean nothing in isolation.
+3. <b>Calibrate</b>:   score a quiet window from the same channel and compare.
+4. <b>Zoom</b>:        readings_around the worst segment; describe what physically happened.
+5. <b>Corroborate</b>: cross_correlation against sibling channels in the same group.
+6. <b>Visualize</b>:   anomaly_overlay_chart(channel), then add_to_dashboard; hand back the URL.
+7. <span class="hl">DISCIPLINE: anomalies_for is the labeled ANSWER KEY. Do NOT consult it while detecting —
+                only afterward, to grade your findings (hits/misses/false alarms).</span>
+
+Report a ranked list: channel, window, the scores that flagged it vs the nominal comparison, a
+phase+duration explanation, the chart URL, and your confidence.</pre>
+  <aside class="notes">
+    Two things to call out. <b>Domain briefing up top</b> — the staircase paragraph is what stops
+    it reaching for value thresholds. <b>Step 7 is the honesty clause</b> — without it the model
+    peeks at the labels and then "discovers" them, which looks brilliant and proves nothing.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 5 · Detectors" data-accent="agent">
+  <div class="chip">Step 5 · The detectors</div>
+  <h2>Six detectors — <span class="thin">scores, never flags</span></h2>
+  <table>
+    <tr><th style="width:280px">Tool</th><th>What it scores</th></tr>
+    <tr><td><code>phase_anomaly</code></td><td>unusual level / dwell-duration / transitions — <b>the staircase unlock</b></td></tr>
+    <tr><td><code>plateau</code></td><td>abnormally long "stuck" flat runs</td></tr>
+    <tr><td><code>data_gaps</code></td><td>dropouts — worst gap vs the dominant sample interval</td></tr>
+    <tr><td><code>stl_residual</code></td><td>departures from the channel's own trend and season</td></tr>
+    <tr><td><code>cadence</code></td><td>sampling jitter and drift (regularity, not dropouts)</td></tr>
+    <tr><td><code>cross_correlation</code></td><td>decorrelation from sibling channels (multivariate)</td></tr>
+  </table>
+  <div class="callout" style="margin-top:20px">
+    <p>Every one returns <b>numbers, not booleans</b>. So <em>the agent</em> decides what counts
+      as an alarm — by scoring a suspect window against a nominal one. <b>No hardcoded
+      thresholds anywhere.</b></p>
+  </div>
+  <aside class="notes">
+    This is the design lesson of the whole step: <b>don't put the judgement in the tool</b>. A
+    boolean detector bakes in a threshold you chose blind; a scored detector lets the model
+    calibrate against the channel's own behaviour. It's also why step 3 (calibrate) exists in the
+    prompt.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 5 · The unlock" data-accent="agent">
+  <div class="chip">Step 5 · Why phase-awareness wins</div>
+  <h2>The March 2000 anomaly, in numbers</h2>
+  <div class="cols wide-left">
+    <div>
+      <p><code>channel_41</code> dropped to level <b>~0.64</b> — <em>well inside</em> its normal
+         0.61–0.98 range. A value threshold shrugs.</p>
+      <p>And then it <b>stayed there for ~7.6 hours</b>.</p>
+      <p><code>phase_anomaly</code> flags it with a <b>dwell z-score of ~29</b>.
+         <code>plateau</code> and <code>data_gaps</code> spike alongside it.</p>
+      <div class="callout"><p><b>Phase + duration sees what value-only detectors can't.</b></p></div>
+    </div>
+    <div>
+      <div class="cols" style="gap:14px">
+        <div class="stat"><div class="big-num" style="color:var(--rose)">0.64</div><p>the stuck value<br/>(range 0.61–0.98)</p></div>
+        <div class="stat"><div class="big-num" style="color:var(--rose)">7.6<span style="font-size:24px">h</span></div><p>dwell time</p></div>
+        <div class="stat" style="grid-column:1/-1"><div class="big-num" style="color:var(--amber)">z ≈ 29</div><p>dwell z-score from <code>phase_anomaly</code></p></div>
+      </div>
+    </div>
+  </div>
+  <p class="kicker">This is the anomaly from the drawing in Step 0. The agent finds it <b>without
+     being told it exists</b>.</p>
+</section>
+
+<section class="slide" data-title="Step 5 · MCP primitives" data-accent="agent">
+  <div class="chip">Step 5 · Protocol</div>
+  <h2>MCP has three primitives — <span class="thin">we use all of them</span></h2>
+  <div class="cols-3">
+    <div class="card amber"><h3>Tools</h3><p class="dim">Model-invoked <b>actions</b> — the
+      detectors, navigation, charts.</p><p class="small dim">Every client supports these.</p></div>
+    <div class="card violet"><h3>Resources</h3><p class="dim">Read-only <b>context</b>:
+      <code>about://dataset</code>, <code>schema://esa_adb</code>,
+      <code>catalog://channels</code>.</p></div>
+    <div class="card teal"><h3>Prompts</h3><p class="dim">Canned, parameterised
+      <b>workflows</b>: <code>investigate_channel(channel)</code>,
+      <code>triage_window(ch, start, end)</code>.</p></div>
+  </div>
+  <div class="callout" style="margin-top:26px">
+    <p><b>Client caveat:</b> LibreChat v0.8.7 consumes <b>tools only</b> — it ignores resources
+      and prompts. Open the <em>same server</em> in Claude Desktop or Claude Code and the
+      resources attach to context while the prompts appear as slash-commands.</p>
+  </div>
+  <p class="kicker">That's the lesson: the protocol is client-agnostic. <b>Build the full surface once.</b></p>
+</section>
+
+<section class="slide" data-title="Step 5 · Visualise" data-accent="agent">
+  <div class="chip">Step 5 · Visualise</div>
+  <h2>Do-what-I-mean, <span class="thin">no Superset API</span></h2>
+  <pre class="sm">anomaly_overlay_chart(<span class="s">"channel_41"</span>)
+  → { <span class="s">"url"</span>: <span class="s">"http://localhost:8088/explore/?slice_id=1"</span> }</pre>
+  <p class="lead">Behind that one call the server logs into Superset, registers
+     <code>labeled_readings</code> as a dataset, and constructs the genuinely fiddly
+     <code>params</code> / <code>query_context</code> for a time-series line split by
+     <code>is_anomaly</code>.</p>
+  <div class="callout">
+    <p>The agent never sees <b>any</b> of it. <b>That encapsulation is the design goal</b> —
+      the tool's job is to absorb the ugly so the model can stay at the level of intent.</p>
+  </div>
+  <aside class="notes">
+    Good place to make the general point: the best MCP tools are the ones where the API underneath
+    is <b>miserable</b>. If a tool is a thin wrapper over a clean REST call, the model could
+    probably have handled the REST call. The value is in what you hide.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 5 · Try it" data-accent="agent">
+  <div class="chip">Step 5 · Try it</div>
+  <h2>The moment of truth</h2>
+  <div class="ask">"Investigate channel_41 for anomalies. Work from the signal — don't look at the
+    labels until you've committed to your findings, then check yourself. Chart the result and give
+    me the link."</div>
+  <p class="lead">Watch the tool-call trace:</p>
+  <div class="pillrow">
+    <span class="pill"><code>channel_summary</code></span>
+    <span class="pill">→</span>
+    <span class="pill"><code>phase_anomaly</code> <span class="dim">broad</span></span>
+    <span class="pill">→</span>
+    <span class="pill"><span class="dim">nominal comparison</span></span>
+    <span class="pill">→</span>
+    <span class="pill"><code>readings_around</code></span>
+    <span class="pill">→</span>
+    <span class="pill"><code>anomaly_overlay_chart</code></span>
+    <span class="pill">→</span>
+    <span class="pill" style="border-color:#5e2c38"><code>anomalies_for</code> <span class="dim">grade itself</span></span>
+  </div>
+  <p class="kicker">Three servers. One conversation. <b>Nobody wrote any SQL.</b></p>
+  <aside class="notes">
+    Run it live and <b>narrate the trace</b> as it streams. If it takes a wrong turn — great,
+    that's the honest version. Ask the room what they'd add to the prompt to fix it; that
+    conversation is worth more than a clean run.
+  </aside>
+</section>
+
+<section class="slide" data-title="Step 5 · Gotchas" data-accent="agent">
+  <div class="chip">Step 5 · Gotchas</div>
+  <h2>If something looks broken <span class="thin">(v0.8.7)</span></h2>
+  <ul>
+    <li><b>Resources/prompts missing?</b> Expected — LibreChat doesn't surface them. Use Claude
+        Desktop or Claude Code to see them.</li>
+    <li><b>Malformed tool calls?</b> Tool-calling through Bedrock-via-LiteLLM must be validated
+        <em>per model</em>. Try <code>dropParams</code> on the custom endpoint, or switch models.
+        <b>Sonnet is the reliable driver.</b></li>
+    <li><b>Want to share your agent?</b> Use <b>Share</b> — there's no create API in 0.8.7.</li>
+    <li><b>Tool list looks truncated?</b> v0.8.7 paginates <code>tools/list</code> with an
+        aggregate budget. 19 tools across three servers is comfortably inside it.</li>
+    <li><b>Max Agent Steps</b> (<code>recursionLimit</code>) defaults to 25 — raise it if a long
+        investigation gets cut off mid-trace.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CLOSING
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<section class="slide" data-title="Wrap-up">
+  <div class="chip">Wrap-up</div>
+  <h2>What you actually built</h2>
+  <div class="cols">
+    <div>
+      <ul class="tight">
+        <li>A real <b>Iceberg lakehouse</b> on S3-compatible storage, with a catalog owning the commits</li>
+        <li>A <b>streaming ingest</b> that's also a batch job, one snapshot per checkpoint</li>
+        <li>A <b>federated SQL engine</b> that prunes partitions using table metadata</li>
+        <li><b>Dashboards</b> over views that encode real domain joins</li>
+        <li>A <b>model gateway</b> with the credential in exactly one place</li>
+        <li><b>Three MCP servers</b> — generic, domain, presentation</li>
+        <li>An <b>agent</b> that investigates, visualises, and grades itself</li>
+      </ul>
+    </div>
+    <div class="card cyan">
+      <h3>All of it</h3>
+      <p class="dim" style="font-size:22px">open source · on a laptop · in Docker · in three hours ·
+        with no account anywhere except one AWS key</p>
+      <p class="dim">Every piece is independently deployable. None of it is a toy.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="Where next">
+  <div class="chip">Where to go from here</div>
+  <h2>Take it home</h2>
+  <div class="cols-3">
+    <div class="card cyan"><h3>Your data</h3><p class="dim">Point <code>trino-mcp</code> at a
+      second catalog — the agent explores it with <b>no changes</b>. Add domain detectors as a
+      sibling to <code>esa-adb</code>.</p></div>
+    <div class="card teal"><h3>More signal</h3><p class="dim">Re-run today at
+      <code>medium</code> or <code>full</code> size — all of Mission1, or all three missions.
+      Same commands.</p></div>
+    <div class="card violet"><h3>More protocol</h3><p class="dim">Add MCP
+      <b>elicitation</b> and <b>sampling</b>. Run the same servers against Claude Desktop or
+      Claude Code — the protocol is the point.</p></div>
+  </div>
+  <div class="callout" style="margin-top:28px">
+    <p>Everything today is in the repo, and the docs at <b>localhost:4321</b> are the written
+      version of these slides. Take the whole thing.</p>
+  </div>
+</section>
+
+<section class="slide center title-slide" data-title="">
+  <h1 style="font-size:64px">Thank you 🛰️</h1>
+  <p class="sub">From raw ESA telemetry to an agent that finds hard-to-spot anomalies —
+     and shows you the picture.</p>
+  <div class="cols" style="margin-top:26px; max-width:960px">
+    <div class="card">
+      <h3>The dataset</h3>
+      <p class="small dim">ESA Anomaly Dataset — © ESA, CC BY 3.0 IGO<br/>
+        zenodo.org/records/15237121 · arXiv:2406.17826</p>
+    </div>
+    <div class="card">
+      <h3>The stack</h3>
+      <p class="small dim">Flink · Iceberg · Polaris · Garage · Trino · Superset ·
+        LibreChat · LiteLLM · FastMCP</p>
+    </div>
+  </div>
+  <div class="meta" style="margin-top:26px; line-height:1.9">
+    JONATHAN MORTON &nbsp;<span style="color:#2f3d5e">·</span>&nbsp; jonathan.morton@ra231.com<br/>
+    CHRISTOPHER FICHMAN &nbsp;<span style="color:#2f3d5e">·</span>&nbsp; chris.fichman@ra231.com
+  </div>
+  <div class="meta" style="margin-top:18px; color:var(--amber)">QUESTIONS — AND THEN GO BREAK SOMETHING</div>
+</section>
+
+</div><!-- /stage -->
+</div><!-- /viewport -->
+
+<div id="progress"></div>
+<div id="pager"></div>
+<div id="notespanel"></div>
+
+<!-- Presenter view (same document, ?presenter=1) -->
+<div id="presenter">
+  <div id="p-meta">
+    <div><div class="lbl">elapsed</div><div id="p-timer">00:00</div></div>
+    <div><div class="lbl">clock</div><div id="p-clock">--:--</div></div>
+    <div style="margin-left:auto; text-align:right">
+      <div class="lbl">slide</div><div id="p-pos" style="font:700 30px/1 ui-monospace,monospace">—</div>
+    </div>
+  </div>
+  <div id="p-now"></div>
+  <div id="p-next"></div>
+  <div id="p-notes"></div>
+</div>
+
+<div id="help">
+  <h3>Deck controls</h3>
+  <table>
+    <tr><td><kbd>→</kbd> <kbd>space</kbd></td><td>next slide</td></tr>
+    <tr><td><kbd>←</kbd></td><td>previous slide</td></tr>
+    <tr><td><kbd>Home</kbd> <kbd>End</kbd></td><td>first / last slide</td></tr>
+    <tr><td><kbd>0</kbd>–<kbd>9</kbd> <kbd>↵</kbd></td><td>jump to slide number</td></tr>
+    <tr><td><kbd>o</kbd></td><td>overview grid (click a slide to jump)</td></tr>
+    <tr><td><kbd>n</kbd></td><td>speaker notes panel, inline</td></tr>
+    <tr><td><kbd>p</kbd></td><td>open the presenter window (notes + next slide + timer)</td></tr>
+    <tr><td><kbd>t</kbd></td><td>reset the timer</td></tr>
+    <tr><td><kbd>f</kbd></td><td>fullscreen</td></tr>
+    <tr><td><kbd>b</kbd> <kbd>.</kbd></td><td>black the screen</td></tr>
+    <tr><td><kbd>?</kbd> <kbd>esc</kbd></td><td>this help / close</td></tr>
+  </table>
+  <p style="margin-top:22px; font-size:16px">Presenter-window sync needs the deck <b>served</b>
+     (<code>task slides</code> → localhost:4321/slides/), not opened as a <code>file://</code> URL.</p>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const STAGE_W = 1280, STAGE_H = 720;
+  const stage   = document.getElementById("stage");
+  const slides  = Array.from(stage.querySelectorAll(".slide"));
+  const pager   = document.getElementById("pager");
+  const bar     = document.getElementById("progress");
+  const notesEl = document.getElementById("notespanel");
+  const isPresenter = new URLSearchParams(location.search).has("presenter");
+
+  let index = 0;
+  let typed = "";
+
+  /* ── sync between the main deck and the presenter window ──────────────── */
+  const KEY = "tm-workshop-deck";
+  let channel = null;
+  try { channel = new BroadcastChannel(KEY); } catch { /* file:// */ }
+
+  function publish(i) {
+    if (channel) channel.postMessage({ i });
+    try { localStorage.setItem(KEY, JSON.stringify({ i, at: Date.now() })); } catch {}
+  }
+  function subscribe(fn) {
+    if (channel) channel.onmessage = (e) => fn(e.data.i);
+    addEventListener("storage", (e) => {
+      if (e.key === KEY && e.newValue) fn(JSON.parse(e.newValue).i);
+    });
+    // localStorage events don't fire on file:// in every browser — poll as a fallback.
+    let last = -1;
+    setInterval(() => {
+      try {
+        const raw = localStorage.getItem(KEY); if (!raw) return;
+        const { i } = JSON.parse(raw);
+        if (i !== last) { last = i; fn(i); }
+      } catch {}
+    }, 250);
+  }
+
+  /* ── scale the fixed stage to fill the viewport ───────────────────────── */
+  function fit() {
+    if (document.body.classList.contains("overview") || isPresenter) {
+      stage.style.transform = "";
+      return;
+    }
+    const s = Math.min(innerWidth / STAGE_W, innerHeight / STAGE_H);
+    stage.style.transform = `scale(${s})`;
+  }
+
+  /* ── navigation ──────────────────────────────────────────────────────── */
+  function show(i, { broadcast = true } = {}) {
+    index = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, n) => s.classList.toggle("current", n === index));
+    const cur = slides[index];
+    pager.textContent = `${index + 1} / ${slides.length}  ·  ${cur.dataset.title || ""}`;
+    bar.style.width = ((index + 1) / slides.length * 100) + "%";
+    const note = cur.querySelector(".notes");
+    notesEl.innerHTML = note ? note.innerHTML : '<i style="opacity:.5">no notes for this slide</i>';
+    if (location.hash !== "#/" + (index + 1)) history.replaceState(null, "", "#/" + (index + 1));
+    if (broadcast) publish(index);
+    if (isPresenter) renderPresenter();
+    if (document.body.classList.contains("overview")) {
+      cur.scrollIntoView({ block: "nearest" });
+    }
+  }
+  const next = () => show(index + 1);
+  const prev = () => show(index - 1);
+
+  /* ── presenter view ──────────────────────────────────────────────────── */
+  const pNow = document.getElementById("p-now");
+  const pNext = document.getElementById("p-next");
+  const pNotes = document.getElementById("p-notes");
+  const pPos = document.getElementById("p-pos");
+
+  function thumb(container, i, scale) {
+    container.innerHTML = "";
+    if (!slides[i]) { container.innerHTML = '<div style="color:#5d6c8c;padding:20px">— end —</div>'; return; }
+    const clone = slides[i].cloneNode(true);
+    clone.classList.add("current");
+    clone.querySelectorAll(".notes").forEach((n) => n.remove());
+    clone.style.zoom = scale;
+    container.appendChild(clone);
+  }
+  const fitScale = (el, fallback) => {
+    const w = el.clientWidth || fallback, h = el.clientHeight || fallback * STAGE_H / STAGE_W;
+    return Math.min(w / STAGE_W, h / STAGE_H);
+  };
+  function renderPresenter() {
+    if (!isPresenter) return;
+    // Size the thumbnails to whatever room the column has.
+    thumb(pNow, index, fitScale(pNow, 640));
+    thumb(pNext, index + 1, fitScale(pNext, 420));
+    const note = slides[index].querySelector(".notes");
+    pNotes.innerHTML = note ? note.innerHTML : '<i style="opacity:.5">no notes for this slide</i>';
+    pPos.textContent = `${index + 1} / ${slides.length}`;
+  }
+
+  /* timer + clock (presenter window) */
+  let t0 = Date.now();
+  const pad = (n) => String(n).padStart(2, "0");
+  setInterval(() => {
+    if (!isPresenter) return;
+    const s = Math.floor((Date.now() - t0) / 1000);
+    document.getElementById("p-timer").textContent = `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+    const d = new Date();
+    document.getElementById("p-clock").textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, 500);
+
+  /* ── modes ───────────────────────────────────────────────────────────── */
+  function toggleOverview() {
+    document.body.classList.toggle("overview");
+    fit();
+    slides[index].scrollIntoView({ block: "center" });
+  }
+  function openPresenter() {
+    const url = location.pathname + "?presenter=1" + location.hash;
+    window.open(url, "tm-presenter", "width=1280,height=820");
+  }
+
+  /* ── input ───────────────────────────────────────────────────────────── */
+  addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key;
+
+    if (k >= "0" && k <= "9") { typed += k; return; }
+    if (k === "Enter" && typed) { show(parseInt(typed, 10) - 1); typed = ""; return; }
+    typed = "";
+
+    switch (k) {
+      case "ArrowRight": case " ": case "PageDown": next(); break;
+      case "ArrowLeft":  case "PageUp": prev(); break;
+      case "ArrowDown": next(); break;
+      case "ArrowUp": prev(); break;
+      case "Home": show(0); break;
+      case "End": show(slides.length - 1); break;
+      case "o": toggleOverview(); break;
+      case "n": document.body.classList.toggle("notes-on"); break;
+      case "p": openPresenter(); break;
+      case "t": t0 = Date.now(); break;
+      case "b": case ".": document.body.classList.toggle("blacked"); break;
+      case "f":
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen?.();
+        break;
+      case "?": case "/": document.body.classList.toggle("help-on"); break;
+      case "Escape":
+        document.body.classList.remove("help-on");
+        document.body.classList.remove("overview");
+        fit();
+        break;
+      default: return;
+    }
+    e.preventDefault();
+  });
+
+  // Click to advance on the main deck; click to select in overview.
+  addEventListener("click", (e) => {
+    if (document.body.classList.contains("help-on")) {
+      document.body.classList.remove("help-on"); return;
+    }
+    if (document.body.classList.contains("overview")) {
+      const s = e.target.closest(".slide");
+      if (s) { toggleOverview(); show(slides.indexOf(s)); }
+      return;
+    }
+    if (isPresenter) { next(); return; }
+    if (e.target.closest("a")) return;
+    next();
+  });
+
+  // Touch: swipe left/right.
+  let tx = 0;
+  addEventListener("touchstart", (e) => { tx = e.changedTouches[0].clientX; }, { passive: true });
+  addEventListener("touchend", (e) => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 60) (dx < 0 ? next : prev)();
+  }, { passive: true });
+
+  addEventListener("resize", fit);
+  addEventListener("hashchange", () => {
+    const n = parseInt((location.hash.match(/#\/(\d+)/) || [])[1], 10);
+    if (n && n - 1 !== index) show(n - 1);
+  });
+
+  // A presenter window follows the main deck, and drives it too.
+  subscribe((i) => { if (i !== index) show(i, { broadcast: false }); });
+
+  if (isPresenter) document.body.classList.add("presenter");
+  const start = parseInt((location.hash.match(/#\/(\d+)/) || [])[1], 10) || 1;
+  fit();
+  show(start - 1);
+  if (isPresenter) addEventListener("resize", renderPresenter);
+})();
+</script>
+</body>
+</html>

@@ -21,6 +21,13 @@ tasks:
       - docker compose up -d --build docs
       - echo "docs + service links -> http://localhost:4321"
 
+  slides:
+    desc: Serve the presenter slide deck (http://localhost:4321/slides/)
+    cmds:
+      # The deck is a static file under site/public, so the docs service serves it.
+      - docker compose up -d --build docs
+      - echo "slides -> http://localhost:4321/slides/   (press ? for controls, p for presenter view)"
+
   up:ingest:
     desc: Start the ingest stack (Garage, Polaris + Postgres, Flink)
     cmds:

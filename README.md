@@ -93,6 +93,7 @@ see [arXiv:2406.17826](https://arxiv.org/abs/2406.17826) for the paper.
 | Service | URL |
 |---|---|
 | Docs + service links | http://localhost:4321 |
+| Presenter slides | http://localhost:4321/slides/ |
 | Flink UI | http://localhost:8081 |
 | Trino | http://localhost:8080 |
 | Superset | http://localhost:8088 (admin / admin) |
@@ -107,6 +108,11 @@ publishes no host port.
 
 ## For instructors
 
+- **Slides:** `task slides` → http://localhost:4321/slides/. A single
+  self-contained HTML deck (`site/public/slides/index.html`) covering Steps 0–5
+  — no build, no network, so it also works opened straight off disk. `?` lists
+  the controls; `p` opens a presenter window with speaker notes, the next
+  slide, and a timer; `o` is the overview grid for jumping around.
 - `task checkpoint:save <name>` after finishing each step during prep; host
   the `checkpoints/` directory on the mirror and set `CHECKPOINT_BASE_URL` so
   `checkpoint:restore` can fetch it. A checkpoint captures the Garage volumes
