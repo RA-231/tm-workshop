@@ -10,8 +10,10 @@ infrastructure; Step 4 gives the model tools.
   model provider, and — the reason we chose it — first-class MCP support.
 - **LiteLLM** — an LLM gateway: one OpenAI-compatible HTTP API in front of
   100+ providers, including AWS Bedrock.
-- **AWS Bedrock** — where the actual Claude models run, using the shared
-  workshop credential.
+- **AWS Bedrock** — where the actual Claude models run, using the Bedrock API
+  key on your workshop card. That key is a bearer token: it can only call
+  Bedrock, it expires at the end of the day, and it is not an AWS access key —
+  it gives no console, no S3, no IAM.
 
 ## Do we really need LiteLLM?
 
@@ -21,12 +23,13 @@ service.
 
 We keep it anyway, deliberately:
 
-1. **One place for the credential.** The AWS key lives in LiteLLM's
+1. **One place for the credential.** Your Bedrock key lives in LiteLLM's
    environment and nowhere else. Every other client — LibreChat today, your
    scripts tomorrow — gets a scoped master key instead of the cloud
    credential.
-2. **A control point.** Shared credential + 40 attendees = you want per-key
-   rate limits and spend tracking somewhere. A gateway is where that lives.
+2. **A control point.** Per-key rate limits and spend tracking have to live
+   somewhere, and a gateway is where. That is what the LiteLLM dashboard at
+   [http://localhost:4000/ui](http://localhost:4000/ui) is for.
 3. **Swappability.** Point `claude-sonnet` at a different provider and no
    client changes. This is how real platforms decouple "what apps ask for"
    from "what infrastructure serves it."
@@ -37,7 +40,8 @@ yourself alone, skip it.
 
 ## Bring it up
 
-Put the workshop AWS credential in `.env` (copy `.env.example` if you haven't):
+Put the Bedrock API key from your card into `.env` (copy `.env.example` if you
+haven't) as `AWS_BEARER_TOKEN_BEDROCK`:
 
 ```bash
 task up:chat     # litellm, mongodb, librechat

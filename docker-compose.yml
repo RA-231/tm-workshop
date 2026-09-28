@@ -178,9 +178,9 @@ services:
     ports:
       - "4000:4000"
     environment:
-      # The shared workshop AWS credential lives HERE and nowhere else.
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # Your Bedrock credential lives HERE and nowhere else. It is a bearer
+      # token scoped to Bedrock alone -- not an AWS access key.
+      AWS_BEARER_TOKEN_BEDROCK: ${AWS_BEARER_TOKEN_BEDROCK:-}
       AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-workshop}
     volumes:

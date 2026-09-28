@@ -1,9 +1,14 @@
 # LiteLLM gateway config: one OpenAI-compatible endpoint in front of AWS Bedrock.
 #
-# Why a gateway at all? Everyone in the workshop shares ONE AWS credential.
-# LiteLLM keeps that credential in exactly one place and hands every client
-# (LibreChat, curl, your own scripts) a plain OpenAI-style API with a master
-# key we control -- plus rate limiting and spend tracking if we need it.
+# Why a gateway at all? Your Bedrock credential goes in exactly one place --
+# here -- and every client (LibreChat, curl, your own scripts) gets a plain
+# OpenAI-style API with a master key you control, plus rate limiting and spend
+# tracking. That is the same shape a platform team runs in production.
+#
+# The credential is a Bedrock API key: a bearer token that can ONLY call
+# Bedrock, carries its own expiry, and is not an AWS access key -- it grants no
+# console, no S3, no IAM. LiteLLM reads it as `api_key` per model, falling back
+# to the AWS_BEARER_TOKEN_BEDROCK environment variable.
 #
 # Model IDs below are verified against the workshop account (`task
 # bedrock:check`). Note the two Bedrock invocation styles:
@@ -24,8 +29,7 @@ model_list:
   - model_name: claude-sonnet-5
     litellm_params:
       model: bedrock/us.anthropic.claude-sonnet-5
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
       aws_region_name: os.environ/AWS_REGION_NAME
 
   # tools: yes  -- alternate tool driver. Claude Sonnet 4.6
@@ -33,8 +37,7 @@ model_list:
   - model_name: claude-sonnet-4-6
     litellm_params:
       model: bedrock/us.anthropic.claude-sonnet-4-6
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
       aws_region_name: os.environ/AWS_REGION_NAME
 
   # tools: no   -- reasoning model; interpret results, don't call tools.
@@ -42,8 +45,7 @@ model_list:
   - model_name: deepseek-r1
     litellm_params:
       model: bedrock/us.deepseek.r1-v1:0
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
       aws_region_name: os.environ/AWS_REGION_NAME
 
   # tools: partial -- present but less proven via Bedrock+MCP; try, don't rely.
@@ -51,16 +53,14 @@ model_list:
   - model_name: gpt-oss-120b
     litellm_params:
       model: bedrock/openai.gpt-oss-120b-1:0
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
       aws_region_name: os.environ/AWS_REGION_NAME
 
   # tools: partial
   - model_name: gpt-oss-20b
     litellm_params:
       model: bedrock/openai.gpt-oss-20b-1:0
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
       aws_region_name: os.environ/AWS_REGION_NAME
 
   # Other families (claude-haiku, amazon.nova-*, meta.llama4-*) are intentionally
