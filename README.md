@@ -96,6 +96,7 @@ see [arXiv:2406.17826](https://arxiv.org/abs/2406.17826) for the paper.
 |---|---|
 | Docs + service links | http://localhost:4321 |
 | Presenter slides | http://localhost:4321/slides/ |
+| Credential scanner | http://localhost:4321/creds/ |
 | Flink UI | http://localhost:8081 |
 | Trino | http://localhost:8080 |
 | Superset | http://localhost:8088 (admin / admin) |
