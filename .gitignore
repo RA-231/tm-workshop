@@ -25,3 +25,11 @@ site/src/content/docs/*.md
 
 # OS noise
 .DS_Store
+
+# Facilitator output: live attendee credentials. Never commit.
+scripts/admin/attendee-keys.csv
+scripts/admin/handouts/
+attendee-keys.csv
+handouts/
+# local scanner test card (fake credential); regenerate as needed
+site/public/creds/test-card.png
