@@ -101,10 +101,11 @@ tasks:
       - bash scripts/bedrock-check.sh
 
   up:chat:
-    desc: Start the chat stack (LiteLLM, MongoDB, LibreChat)
+    desc: Start the chat stack (Postgres, LiteLLM, MongoDB, LibreChat)
     cmds:
-      - docker compose up -d litellm mongodb librechat
+      - docker compose up -d litellm-postgres litellm mongodb librechat
       - echo "LibreChat -> http://localhost:3080  (register any account)"
+      - echo "LiteLLM dashboard -> http://localhost:4000/ui  (admin / ${LITELLM_MASTER_KEY})"
 
   up:mcp:
     desc: Build + start the three MCP servers (esa-adb, trino, superset) and reload LibreChat

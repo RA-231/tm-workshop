@@ -71,3 +71,7 @@ litellm_settings:
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  # Let the dashboard persist models and virtual keys rather than reading this
+  # file as the only source of truth.
+  store_model_in_db: true

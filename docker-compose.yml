@@ -172,6 +172,25 @@ services:
       - trino
 
   # ── Step 3: chat ──────────────────────────────────────────────────────────
+  # LiteLLM's own metastore. The proxy answers /chat/completions without it,
+  # but the dashboard's whole job — virtual keys, per-key budgets, spend
+  # tracking — is stored here. Without a DATABASE_URL, /ui loads and
+  # /key/generate returns "DB not connected".
+  litellm-postgres:
+    image: postgres:18.4-alpine3.23
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+      POSTGRES_DB: litellm
+    volumes:
+      # Postgres 18 wants the mount at /var/lib/postgresql, as with polaris-pg.
+      - litellm-pg:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
     command: ["--config", "/etc/litellm/config.yaml"]
@@ -183,8 +202,15 @@ services:
       AWS_BEARER_TOKEN_BEDROCK: ${AWS_BEARER_TOKEN_BEDROCK:-}
       AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-workshop}
+      DATABASE_URL: postgresql://litellm:litellm@litellm-postgres:5432/litellm
+      # The dashboard signs in with the master key as the password.
+      UI_USERNAME: ${LITELLM_UI_USERNAME:-admin}
+      UI_PASSWORD: ${LITELLM_MASTER_KEY:-sk-workshop}
     volumes:
       - ./litellm/config.yaml:/etc/litellm/config.yaml:ro
+    depends_on:
+      litellm-postgres:
+        condition: service_healthy
 
   mongodb:
     image: mongo:7
@@ -270,6 +296,7 @@ services:
       - ./data/prepared:/data/prepared
 
 volumes:
+  litellm-pg:
   mongo-data:
   garage-meta:
   garage-data:
