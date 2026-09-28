@@ -45,11 +45,28 @@ tasks:
     cmds:
       - bash scripts/create-catalog.sh
 
-  flink:job:
-    desc: Load readings + metadata tables into Iceberg (Flink SQL)
+  flink:load:
+    internal: true
     cmds:
       - docker compose exec -T flink-jobmanager bin/sql-client.sh -f /opt/flink/sql/ingest.sql
       - docker compose exec -T flink-jobmanager bin/sql-client.sh -f /opt/flink/sql/metadata.sql
+
+  flink:job:
+    desc: Load readings + metadata tables into Iceberg (Flink SQL)
+    # No-op once the tables are in the catalog. The load SQL drops and
+    # re-creates them, and Polaris purges the old data files in the background
+    # — which stalls every catalog call for minutes. Use `task flink:reload`
+    # to redo the load on purpose.
+    status:
+      - bash scripts/tables-loaded.sh
+    cmds:
+      - task: flink:load
+
+  flink:reload:
+    desc: Drop and re-load the Iceberg tables from scratch
+    prompt: This re-creates the tables. Polaris purges the old data files in the background, which slows catalog operations for a few minutes. Continue?
+    cmds:
+      - task: flink:load
 
   trino:views:
     desc: Create the Trino views (enriched readings, anomalies, labeled_readings)

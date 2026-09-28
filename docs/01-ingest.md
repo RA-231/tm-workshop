@@ -107,6 +107,13 @@ When `task flink:job` returns, the load is done. Confirm the rows are there:
 task rowcount
 ```
 
+`flink:job` is a no-op once the tables are loaded — it compares the committed
+row count against the prepared input and skips if they match. To redo the load
+deliberately, use `task flink:reload`. The load SQL drops and re-creates the
+tables, and Polaris deletes the old data files in the background, which slows
+every catalog operation while it runs; `flink:reload` prompts first so that is
+never a surprise.
+
 Stuck, or don't want to wait for the full ingest?
 `task checkpoint:restore -- <name>` drops in a pre-built warehouse — both the
 Iceberg files and the Polaris catalog that points at them — so you can start

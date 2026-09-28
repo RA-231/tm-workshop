@@ -96,6 +96,15 @@ services:
       # (and most S3-compatible stores) reject. Only checksum when required.
       AWS_REQUEST_CHECKSUM_CALCULATION: when_required
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      # Polaris does its own S3 I/O: the metadata.json reads behind every
+      # loadTable, and the background file deletes a DROP TABLE ... PURGE
+      # queues. The AWS SDK's Apache pool defaults to 50 connections, which a
+      # purge of a few hundred data files saturates — every other catalog call
+      # then blocks on the 10s acquisition timeout and retries, so a plain
+      # CREATE VIEW takes minutes instead of under a second. Give the pool room
+      # and cap how many cleanup tasks compete for it at once.
+      polaris.storage.max-http-connections: "200"
+      polaris.tasks.max-concurrent-tasks: "4"
       quarkus.otel.sdk.disabled: "true"
     depends_on:
       garage:

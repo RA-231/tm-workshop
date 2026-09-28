@@ -53,6 +53,8 @@ task trino:views      # create the enrichment / anomaly views
 ```
 
 `task --list` shows every command. `task up` starts the entire stack at once.
+`task flink:job` skips itself once the data is loaded — `task flink:reload`
+forces a fresh load.
 
 ## What lands in the warehouse
 
