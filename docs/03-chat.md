@@ -41,14 +41,43 @@ yourself alone, skip it.
 ## Bring it up
 
 Put the Bedrock API key from your card into `.env` (copy `.env.example` if you
-haven't) as `AWS_BEARER_TOKEN_BEDROCK`:
+haven't) as `AWS_BEARER_TOKEN_BEDROCK`.
+
+The key is 132 characters, so rather than typing it, scan the QR code on your
+card. Run `task up:docs` if it isn't already running, open
+**[http://localhost:4321/creds](http://localhost:4321/creds)**, click *Start
+camera*, hold the card up, and copy the three lines it decodes into `.env`.
+
+That page is worth a second's thought, because it is doing something you should
+normally refuse to do — putting a live credential through a web page. It is
+safe here for reasons that are all structural, not promises: it is served from
+*your* laptop, the QR is decoded in your browser by a JavaScript library
+vendored into this repo rather than fetched from a CDN, and the page makes no
+network requests at all. Pull your network cable out and it still works. If
+someone hands you a scanner page that doesn't meet that bar, type the key
+instead.
 
 ```bash
-task up:chat     # litellm, mongodb, librechat
+task up:chat     # postgres, litellm, mongodb, librechat
 ```
 
 - LibreChat: [http://localhost:3080](http://localhost:3080) — register any
   account (it's your local instance; email verification is off).
+- LiteLLM's dashboard: [http://localhost:4000/ui](http://localhost:4000/ui) —
+  log in as `admin` with your `LITELLM_MASTER_KEY`. This is the gateway's
+  control point from earlier, made concrete: mint a virtual key with a budget,
+  spend against it, watch the spend climb.
+
+```bash
+# a key of your own, capped at 50 cents
+curl -s http://localhost:4000/key/generate \
+  -H "Authorization: Bearer sk-workshop" -H "Content-Type: application/json" \
+  -d '{"models":["claude-sonnet-5"],"max_budget":0.50,"key_alias":"mine"}'
+```
+
+  Use the `sk-...` it returns instead of `sk-workshop` and the dashboard will
+  track every call against that budget. That is the whole argument for running a
+  gateway, in one exercise.
 - LiteLLM speaks OpenAI's API on port 4000. Prove it from the terminal:
 
 ```bash
