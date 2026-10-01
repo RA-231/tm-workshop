@@ -72,3 +72,24 @@ there is no API for it. Two things to know:
 The per-seat cap attendees actually get is LiteLLM's: `/key/generate` with
 `max_budget`, which Step 3 teaches. It runs on their own laptop, so it protects
 them from surprises rather than protecting the project.
+
+**Rate limits are the control that actually bounds the damage**, because they
+cap the burn *rate* with no human in the loop and no reporting delay. The
+project's per-model limits were lowered from the defaults on 2026-10-01:
+
+| | RPM | TPM | ceiling at ~$12/M tokens |
+| --- | --- | --- | --- |
+| default | 5000 | 2-4M per model (10M total) | ~$120/min |
+| now | 500 | 200k per model (800k total) | ~$9.60/min |
+
+Sizing: 50 attendees x ~45 turns x ~1.5k tokens is ~3.4M tokens for the whole
+day (~$40). A simultaneous burst from every seat is ~75k tokens, so 200k TPM
+leaves ~2.7x headroom. If it pinches during the dry run, raise it -- limits are
+per project and take effect immediately.
+
+**Do not rely on watching the dashboard.** Usage data backfills on the order of
+20-30 minutes (measured: a sliding 2-hour window reported newer data on a later
+query with no calls in between). Revoking a key takes about 5 seconds once you
+decide to, but by the time a spike is visible it is already 20+ minutes old. The
+order of defence is: rate limits (immediate, automatic), then the monthly hard
+spend limit (lagging, automatic), then monitoring (lagging, manual).
