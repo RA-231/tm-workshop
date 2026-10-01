@@ -66,9 +66,99 @@ SELECT count(*) FROM iceberg.esa_adb.readings
 FOR VERSION AS OF <snapshot_id>;
 ```
 
+### What the provenance columns cost
+
+Step 1 added five columns recording where each row came from. Logically that's
+a value on every one of the 27 million rows. Physically it's almost nothing,
+and the reason is the same machinery as above.
+
+Each Flink writer task reads one input file, so within any given Parquet file
+`source_file` is the *same string on every row* — and `run_id`, `ingest_ts`
+and `ingest_mode` are constant across the whole load. Parquet stores a column
+chunk per column per row group, and for a constant column that chunk is a
+dictionary page holding one entry plus a run-length marker standing in for
+millions of repeats. You pay for the string roughly once per row group, not
+once per row.
+
+Adding columns also creates **no new files**. File count follows partitioning,
+writer parallelism and commit cadence — new columns become column chunks
+inside the files that already exist.
+
+The overhead that is real sits in the metadata rather than the data: Parquet
+footers gain a column chunk entry per column, and Iceberg manifests gain a
+`lower_bound` / `upper_bound` / `null_count` / `value_count` tuple per column
+per data file. That scales with file count, not row count.
+
+Measured on this warehouse the table runs about 4 bytes/row all-in — the five
+constant-per-file columns add only a low single-digit percent on top of the
+`channel, ts, ts_month, value` payload. Check the absolute size with:
+
+```sql
+SELECT count(*) AS files, sum(file_size_in_bytes) AS bytes,
+       round(1.0 * sum(file_size_in_bytes) / sum(record_count), 3) AS bytes_per_row
+FROM iceberg.esa_adb."readings$files";
+```
+
+Don't expect that number to be identical run to run. A lot of the per-row cost
+is fixed metadata *per file* — Parquet footers and the manifest stat tuples
+above — and the file count itself shifts with writer parallelism and checkpoint
+timing from one load to the next. The columns are cheap; the file count is the
+variable that actually moves the total.
+
+And it can buy something back — but only if you ask for it. Because
+`source_file` is constant within a file, its lower and upper bounds are equal,
+so `WHERE source_file = '...'` can skip whole files through the same manifest
+statistics that prune `ts_month` partitions.
+
+The catch is that Iceberg truncates string bounds to 16 characters by default.
+These paths all begin `/data/prepared/c…`, so truncated bounds are **identical
+for every file** and nothing prunes — the engine reads everything and filters
+row by row. `ingest.sql` therefore sets:
+
+```sql
+'write.metadata.metrics.column.source_file' = 'full'
+```
+
+which keeps the untruncated value in the manifest. Check the bounds yourself:
+
+```sql
+SELECT DISTINCT lower_bounds[5], upper_bounds[5]
+FROM iceberg.esa_adb."readings$files";
+```
+
+Then measure the difference — `EXPLAIN ANALYZE` reports splits read and rows
+filtered, which is where pruning shows up. The plain `EXPLAIN` cost estimate
+will *not* show it, because the optimizer has no statistics for this column:
+
+```sql
+EXPLAIN ANALYZE SELECT count(*) FROM iceberg.esa_adb.readings
+WHERE source_file = '/data/prepared/channels/channel_61.json';
+```
+
+On this dataset that takes the scan from every file — 17.4M rows and 791 MB
+of physical input — down to 180 files, 905k rows and 3.8 MB.
+
+Note it doesn't drop to a single file, and the reason is worth understanding.
+The table is partitioned by `ts_month`, not by channel, so one Parquet file
+holds whichever channels were active in that month. 180 is exactly the number
+of files whose `source_file` range spans `channel_61` — the planner skipped
+everything it possibly could. Pruning is bounded by how the data is laid out,
+not just by the statistics.
+
+It's a good lesson in its own right: a column only prunes if the statistics
+recorded about it can actually tell files apart — and even then, only as well
+as the physical layout allows.
+
+One caveat worth carrying: this is cheap *because* the values are constant per
+file. Per-row provenance — a source line number, a sequence ID — would defeat
+the dictionary and cost real bytes on every row.
+
 ## Views: enrich once, reuse everywhere
 
-`readings` is a bare fact table — `channel, ts, value`. Step 1 also loaded
+`readings` carries the telemetry — `channel, ts, ts_month, value` — plus five
+provenance columns describing where each row came from (`source_file`,
+`source_mtime`, `ingest_ts`, `run_id`, `ingest_mode`; see the metadata-column
+side-note in [Step 1](01-ingest.md)). Step 1 also loaded
 three dimension tables: `channels` (what each channel measures), `labels` (the
 ESA-labeled anomaly windows), and `anomaly_types` (the taxonomy). Views let us
 join those once and give everyone — SQL Lab, Superset, and the Step 4 MCP

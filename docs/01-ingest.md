@@ -99,6 +99,74 @@ The ingest job is ~40 lines of Flink SQL — open
 prepared JSON as a table, one defines the Iceberg catalog via Polaris, and one
 `INSERT INTO ... SELECT` connects them.
 
+### Side-note: metadata columns
+
+Look at the source table and you'll find two columns the JSON doesn't have:
+
+```sql
+source_file  STRING           METADATA FROM 'file.path' VIRTUAL,
+source_mtime TIMESTAMP_LTZ(3) METADATA FROM 'file.modification-time' VIRTUAL
+```
+
+Every record a connector reads carries two kinds of information. There's the
+**payload** — the fields inside each JSON object: `channel`, `ts`, `value`. And
+there's **what the connector knows about where the record came from**: which
+file it was read from, how big that file is, when it was last modified. The
+second kind normally gets thrown away.
+
+`METADATA FROM 'file.path'` says: don't parse this out of the record body, ask
+the connector for it. Each connector publishes its own keys — a Kafka source
+offers topic, partition, offset, event timestamp and headers the same way, so
+the idea generalizes well beyond files.
+
+`VIRTUAL` means read-only, and it applies to **the table it's declared on** —
+here `telemetry_in`, the source. It says: if you ever used `telemetry_in` as a
+sink, you wouldn't supply this column. Since we only ever read from it, that's
+close to a formality. The alternative, a *persisted* metadata column, declares
+that the connector can write the key back — sensible for a Kafka record
+timestamp, impossible for a file's own path.
+
+**`VIRTUAL` has nothing to do with the Iceberg side.** The natural misreading
+is that it stops the value reaching Parquet, which is backwards — getting it
+into Parquet is the entire point. The two declarations sit at opposite ends of
+the job:
+
+```sql
+-- source: read-only, from the connector
+CREATE TABLE telemetry_in (
+    channel STRING, ts STRING, `value` DOUBLE,
+    source_file STRING METADATA FROM 'file.path' VIRTUAL
+) WITH ('connector' = 'filesystem', ...);
+
+-- target: an ordinary Iceberg column, stored exactly like `channel`
+CREATE TABLE polaris.esa_adb.readings (
+    channel STRING, ts TIMESTAMP(3), ts_month STRING, `value` DOUBLE,
+    source_file STRING
+) PARTITIONED BY (ts_month) WITH (...);
+```
+
+The `INSERT ... SELECT` is what carries the value across. The metadata column
+itself stores nothing — it exists only while reading. Iceberg has no notion of
+a metadata column; it just sees nine normal columns.
+
+Which is the point: where a row came from is information the runtime already
+has and currently discards. The metadata column is just the declaration that
+says keep it. Step 2 picks up what that costs to store — less than you'd
+think.
+
+### What the load records about itself
+
+Four of the nine columns describe the load rather than the telemetry:
+`source_file` and `source_mtime` come from the metadata columns above, while
+`run_id`, `ingest_ts` and `ingest_mode` are stamped by `task flink:job` and
+are identical for every row of a single run. That makes two loads of the same
+input distinguishable, and lets you ask "how many rows came from this file?"
+without counting the input by hand.
+
+`ingest_mode` records whether the load ran in streaming or batch execution
+mode. The transform — the `SELECT` — is identical either way; only the
+orchestration differs. Recording the mode keeps that claim honest.
+
 ## Checkpoint
 
 When `task flink:job` returns, the load is done. Confirm the rows are there:

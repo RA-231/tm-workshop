@@ -47,9 +47,32 @@ tasks:
 
   flink:load:
     internal: true
+    # The SQL carries ${RUN_ID} / ${INGEST_TS} / ${INGEST_MODE} placeholders for
+    # the provenance columns. envsubst renders them in the container before the
+    # SQL client sees the file, so every row of one load shares one value —
+    # CURRENT_TIMESTAMP would be evaluated per record instead. The explicit
+    # variable list keeps envsubst away from any other $ in the SQL.
+    vars:
+      RUN_ID:
+        sh: date -u +%Y%m%dT%H%M%SZ
+      INGEST_TS:
+        sh: date -u +"%Y-%m-%d %H:%M:%S.000"
+      INGEST_MODE: streaming
     cmds:
-      - docker compose exec -T flink-jobmanager bin/sql-client.sh -f /opt/flink/sql/ingest.sql
-      - docker compose exec -T flink-jobmanager bin/sql-client.sh -f /opt/flink/sql/metadata.sql
+      # Metadata-only drop through the catalog REST API. Flink's own DROP TABLE
+      # always demands a purge, and Polaris deleting ~900 files in the
+      # background starves its S3 pool while this load is still committing.
+      - bash scripts/drop-tables.sh
+      - for: [ingest.sql, metadata.sql]
+        cmd: >-
+          docker compose exec -T
+          -e RUN_ID='{{.RUN_ID}}'
+          -e INGEST_TS='{{.INGEST_TS}}'
+          -e INGEST_MODE='{{.INGEST_MODE}}'
+          flink-jobmanager
+          bash -c 'envsubst "\${RUN_ID} \${INGEST_TS} \${INGEST_MODE}"
+          < /opt/flink/sql/{{.ITEM}} > /tmp/{{.ITEM}}
+          && bin/sql-client.sh -f /tmp/{{.ITEM}}'
 
   flink:job:
     desc: Load readings + metadata tables into Iceberg (Flink SQL)

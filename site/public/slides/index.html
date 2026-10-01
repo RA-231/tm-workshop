@@ -886,8 +886,9 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
 <section class="slide" data-title="Step 2 · Views" data-accent="query">
   <div class="chip">Step 2 · Views</div>
   <h2>Enrich once, reuse everywhere</h2>
-  <p><code>readings</code> is a bare fact table: <code>channel, ts, value</code>. Step 1 also
-     loaded <code>channels</code>, <code>labels</code> and <code>anomaly_types</code>.
+  <p><code>readings</code> is the fact table: <code>channel, ts, ts_month, value</code>, plus five
+     provenance columns (<code>source_file</code>, <code>run_id</code>, &hellip;) recording where each row
+     came from. Step 1 also loaded <code>channels</code>, <code>labels</code> and <code>anomaly_types</code>.
      Join them <b>once</b>, behind a name:</p>
   <pre class="sql sm">task trino:views</pre>
   <div class="cols-3">
