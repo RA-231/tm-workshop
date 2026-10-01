@@ -1,6 +1,6 @@
 # Step 4 — Build an MCP Server for Trino
 
-We have a warehouse full of telemetry and a chat UI wired to Claude. The last
+We have a warehouse full of telemetry and a chat UI wired to a model. The last
 piece is teaching the model to *use* the warehouse. That's what the Model
 Context Protocol (MCP) does: it's a standard way to hand an LLM a set of
 tools — functions it can call, with typed inputs and outputs.
@@ -66,7 +66,7 @@ enable the **telemetry** MCP server in the tools menu.
 
 ## Try it
 
-Ask Claude things that require multi-step tool use:
+Ask the model things that require multi-step tool use:
 
 - *"What tables and views are available, and what does the readings table
   look like?"*
@@ -90,7 +90,7 @@ follows.
    `labeled_readings` view are already in the warehouse (Step 2). Add an
    `anomalies_for(channel)` tool that returns a channel's anomaly windows and
    their categories, so the model reaches for it directly instead of writing
-   the join each time. Then ask Claude to *investigate* an anomaly: what did
+   the join each time. Then ask the model to *investigate* an anomaly: what did
    the channel do in the hour around it?
 3. **Break it on purpose.** Remove the read-only check from `query` and ask
    the model to clean up the warehouse. (Kidding. Don't. But do read the

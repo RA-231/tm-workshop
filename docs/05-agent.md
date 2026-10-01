@@ -1,7 +1,7 @@
 # Step 5 — The Capstone: A Telemetry Analysis Agent
 
 Everything so far has been building to this. We have a lakehouse (Steps 1–2), a
-chat UI wired to Bedrock (Step 3), and MCP servers that give a model real
+chat UI wired to the gateway (Step 3), and MCP servers that give a model real
 capabilities (Step 4). Now we assemble a **LibreChat Agent** that composes them
 into something that *works like an analyst*: it **explores** the data, **detects**
 anomalies from the signal, and **visualizes** what it finds — deciding for itself
@@ -9,13 +9,13 @@ which tool to reach for at each step.
 
 ## What we're building
 
-An agent backed by a reasoning model (Claude Sonnet on Bedrock) that composes
+An agent backed by a capable tool-calling model that composes
 **three focused MCP servers**:
 
 ```
                          ┌──────────────────────────────┐
                          │  LibreChat Agent              │
-                         │  (Claude Sonnet 5 via Bedrock)│
+                         │  (workshop-default model)     │
                          └───────────────┬───────────────┘
                         tools │          │          │ tools
               ┌───────────────┘          │          └────────────────┐
@@ -87,9 +87,9 @@ instead — no external dependency, and the code runs next to the data.
 1. Pick **Agents** from the model/endpoint menu, then open the **Agent Builder**
    in the side panel.
 2. **Name:** `Telemetry Anomaly Analyst`
-3. **Model:** provider **Bedrock (LiteLLM)** → **`claude-sonnet-5`** (a strong
-   tool-caller; DeepSeek-R1 is available too but reasoning models are weaker at
-   the tool loop — use it to *interpret* results, not drive tools).
+3. **Model:** provider **Workshop Models** → **`workshop-default`**. The other
+   models in the picker are fine for chat, but not all of them can call tools on
+   this path — the alias points at one that can.
 4. **Instructions:** paste the methodology prompt below.
 5. **Tools → Add Tools:** enable the **esa-adb**, **trino**, and **superset** MCP
    servers. Each appears as one entry you can expand to toggle individual tools.
@@ -194,7 +194,7 @@ finally `anomalies_for` to grade itself. Three servers, one conversation.
 
 - **Resources/prompts** aren't surfaced by LibreChat — expected; use Claude
   Desktop/Code to see them.
-- **Tool-calling** through Bedrock-via-LiteLLM must be validated per model; if a
+- **Tool-calling** must be validated per model; if a
   model emits malformed calls, try `dropParams` on the custom endpoint or switch
   models. Sonnet is the reliable driver.
 - **Agent reproducibility** is by **Share**, not export/import (no create API in

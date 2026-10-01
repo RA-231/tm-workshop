@@ -3,11 +3,11 @@
 **A Space Summit 2026 workshop**: process, store, query, and _talk to_
 satellite telemetry using open source tools — Apache Flink, Iceberg, Polaris,
 Trino, Superset, Garage, LibreChat, LiteLLM, and a hand-built MCP server on
-AWS Bedrock.
+an OpenAI-compatible model gateway.
 
 We ingest real ESA mission telemetry (the
 [ESA Anomaly Dataset](https://zenodo.org/records/15237121)) into an Iceberg
-lakehouse with Flink, query it with Trino and Superset, then teach Claude to
+lakehouse with Flink, query it with Trino and Superset, then teach a model to
 explore it through a custom MCP server.
 
 ## Prerequisites
@@ -15,7 +15,7 @@ explore it through a custom MCP server.
 - **Docker** (a recent Docker Desktop or Engine; Compose v2)
 - **[Task](https://taskfile.dev)** (`brew install go-task` / see taskfile.dev)
 - ~8 GB of RAM for Docker and a few GB of free disk
-- The workshop AWS credential (handed out at the session) for Steps 3–4
+- The workshop model key (handed out on a card at the session) for Steps 3–4
 
 No accounts, no auth, nothing else to install — everything runs in containers.
 
@@ -37,7 +37,7 @@ doc:
 | Step 1 | [Ingest](docs/01-ingest.md) | Flink → Iceberg (on Garage), via the Polaris catalog |
 | Step 2 | [Query](docs/02-query.md) | Trino, the query planner, views, Superset dashboards |
 | ☕ | _break_ | |
-| Step 3 | [Chat](docs/03-chat.md) | LibreChat + LiteLLM + Bedrock |
+| Step 3 | [Chat](docs/03-chat.md) | LibreChat + LiteLLM + the model gateway |
 | Step 4 | [MCP](docs/04-mcp-server.md) | Build an MCP server for Trino with FastMCP |
 | Step 5 | [Agent](docs/05-agent.md) | Compose trino/esa-adb/superset MCP servers into an analysis agent |
 
@@ -120,7 +120,9 @@ publishes no host port.
   the `checkpoints/` directory on the mirror and set `CHECKPOINT_BASE_URL` so
   `checkpoint:restore` can fetch it. A checkpoint captures the Garage volumes
   and the Polaris Postgres volume together, so a restore is complete.
-- The Bedrock model IDs in `litellm/config.yaml` must match what the workshop
-  AWS account has enabled — verify during prep.
+- No model IDs live in `litellm/config.yaml`. The gateway discovers what the
+  workshop key can reach each time it starts, so adding or removing a model
+  upstream needs no repo change — run `task llm:check` during prep to see the
+  list and confirm `WORKSHOP_DEFAULT_MODEL` is still among it.
 - A hosted deployment of this stack runs on the Intelligent Space Platform for
   attendees who prefer not to install anything.
