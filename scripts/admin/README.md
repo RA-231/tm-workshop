@@ -77,15 +77,30 @@ them from surprises rather than protecting the project.
 cap the burn *rate* with no human in the loop and no reporting delay. The
 project's per-model limits were lowered from the defaults on 2026-10-01:
 
-| | RPM | TPM | ceiling at ~$12/M tokens |
+| model | RPM | TPM | ceiling at ~$12/M tokens |
 | --- | --- | --- | --- |
-| default | 5000 | 2-4M per model (10M total) | ~$120/min |
-| now | 500 | 200k per model (800k total) | ~$9.60/min |
+| *(provider default)* | 5000 | 2-4M each, 10M total | ~$120/min |
+| `chat-latest` (= `workshop-default`) | 1000 | 600k | $7.21/min |
+| the other three | 500 | 200k each | $2.40/min each |
+| **total now** | | **1.2M** | **$14.42/min** |
 
-Sizing: 50 attendees x ~45 turns x ~1.5k tokens is ~3.4M tokens for the whole
-day (~$40). A simultaneous burst from every seat is ~75k tokens, so 200k TPM
-leaves ~2.7x headroom. If it pinches during the dry run, raise it -- limits are
-per project and take effect immediately.
+Sizing is driven by the AI segment being ~40 minutes, so usage is dense rather
+than spread across a day:
+
+- Expected: 50 attendees x ~15 turns. At chat-weight turns (~1.5k tokens) that
+  is ~1.1M tokens (~$13); at agent turns carrying MCP tool results (~8k tokens)
+  it is ~6M (~$72).
+- Worst case, everything saturated for the full 40 minutes: ~$577. That sits
+  just above the project's $500 monthly hard limit, so the limit is the real
+  backstop and the rate limits absorb bursts without tripping it.
+- `chat-latest` gets the headroom because `workshop-default` points at it and it
+  is the only model that drives tools on this path. A synchronised Step 5 burst
+  ("everyone run the agent now") is ~50 x 8k = 400k tokens in one minute, which
+  200k TPM would have throttled. Its RPM is higher too: an agent turn is several
+  API calls, one per tool round trip, not one.
+
+If it pinches during the dry run, raise it -- limits are per project and take
+effect immediately.
 
 **Do not rely on watching the dashboard.** Usage data backfills on the order of
 20-30 minutes (measured: a sliding 2-hour window reported newer data on a later
