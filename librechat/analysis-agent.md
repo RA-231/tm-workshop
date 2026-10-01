@@ -10,7 +10,7 @@ answer key.
 
 1. **Agents** menu (top-left) → **Create Agent**.
 2. **Name:** `Telemetry Anomaly Analyst`
-3. **Model:** provider *Workshop Models* → **`claude-sonnet-5`** (strong tool-caller).
+3. **Model:** provider *Workshop Models* → **`workshop-default`** (strong tool-caller).
 4. **Instructions:** paste the system prompt below.
 5. **Tools → MCP → telemetry:** enable it (exposes all 10 tools —
    `list_channels`, `channel_summary`, `readings_around`, `query`, … plus

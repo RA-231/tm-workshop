@@ -33,3 +33,6 @@ attendee-keys.csv
 handouts/
 # local scanner test card (fake credential); regenerate as needed
 site/public/creds/test-card.png
+
+# Gateway model list, generated at run time from whatever your key can reach
+litellm/config.generated.yaml

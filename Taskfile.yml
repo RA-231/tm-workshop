@@ -95,17 +95,19 @@ tasks:
       - docker compose up -d --wait trino
       - docker compose exec -T trino trino --execute "SELECT count(*) AS rows FROM iceberg.esa_adb.readings"
 
-  bedrock:check:
-    desc: Validate the AWS credential + config model IDs against Bedrock (read-only)
+  llm:check:
+    desc: Validate your model credential and list the models it can reach (read-only)
     cmds:
-      - bash scripts/bedrock-check.sh
+      - bash scripts/llm-check.sh
 
   up:chat:
     desc: Start the chat stack (Postgres, LiteLLM, MongoDB, LibreChat)
     cmds:
+      # Discover which models this key can reach before starting the gateway.
+      - python3 scripts/render-litellm-config.py
       - docker compose up -d litellm-postgres litellm mongodb librechat
       - echo "LibreChat -> http://localhost:3080  (register any account)"
-      - echo "LiteLLM dashboard -> http://localhost:4000/ui  (admin / ${LITELLM_MASTER_KEY})"
+      - echo "LiteLLM dashboard -> http://localhost:4000/ui  (log in as admin, password = LITELLM_MASTER_KEY from your .env)"
 
   up:mcp:
     desc: Build + start the three MCP servers (esa-adb, trino, superset) and reload LibreChat
