@@ -1,29 +1,23 @@
 #!/usr/bin/env bash
-# Mint one expiring Bedrock API key per attendee seat. Run the night before or
-# the morning of the workshop.
+# Mint one expiring API key per attendee seat. Run the night before or the
+# morning of the workshop.
 #
-# Each seat is an IAM user (tmws-NN) carrying a Bedrock service-specific
-# credential: a 132-char bearer token that can ONLY call Bedrock. Attendees get
-# no AWS access keys, no console, no SDK credentials. CloudTrail attributes
-# every call to the seat's IAM user, and `revoke-attendee-keys.sh --seat NN`
-# kills one seat without touching the other 49.
+# Each seat is a service account named tmws-NN in the workshop project. The key
+# it returns reaches that project and nothing else -- no dashboard, no billing,
+# no other project -- and carries its own expiry, so the whole cohort dies at
+# the cutoff with no teardown step.
 #
-# Validity window:
-#   start  midnight MST on the day this script is run (computed at run time)
-#   end    2026-10-06T23:59:59 MST -- HARD-CODED, the workshop's last moment
+# The service-account name is what the provider's usage and cost dashboards
+# group by, so tmws-07 stays the unit of attribution: per-seat spend is
+# visible even though per-key spend *limits* do not exist (the project's
+# monthly hard limit is shared across all seats -- see README.md).
 #
-# Both are enforced as IAM Deny conditions on the group, so they apply to every
-# key regardless of what anyone still holds, and independently of each key's own
-# --days expiry.
+#   ./mint-attendee-keys.sh [--seats 50]
 #
-#   ./mint-attendee-keys.sh [--seats 50] [--days 2]
-#
-# Writes attendee-keys.csv (mode 0600) -- the only copy of the secrets.
+# Writes attendee-keys.csv (mode 0600) -- the only copy of the keys.
 set -euo pipefail
 
-SEATS=50; DAYS=2; GROUP=tm-workshop-attendees
-PREFIX=tmws; OUT=attendee-keys.csv
-POLICY_NAME=tm-workshop-attendee-bedrock
+SEATS=50; PREFIX=tmws; OUT=attendee-keys.csv
 
 # MST is UTC-7 with no daylight adjustment, exactly as specified. If the venue
 # actually observes MDT (UTC-6) on Oct 6, this cutoff lands at 00:59 local on
@@ -32,84 +26,34 @@ CUTOFF_LOCAL="2026-10-06T23:59:59-07:00"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --seats)   SEATS=$2; shift 2 ;;
-    --days)    DAYS=$2;  shift 2 ;;
-    --profile) PROFILE=$2; shift 2 ;;
-    --out)     OUT=$2;   shift 2 ;;
+    --seats)  SEATS=$2; shift 2 ;;
+    --cutoff) CUTOFF_LOCAL=$2; shift 2 ;;
+    --out)    OUT=$2;   shift 2 ;;
     *) echo "unknown arg: $1" >&2; exit 1 ;;
   esac
 done
-# Credentials, account discovery and the IAM-admin check live here.
-. "$(dirname "${0}")/_preflight.sh"
-export AWS_REGION=${AWS_REGION:-us-east-1}
 
-# Today in MST -- not UTC. Run at 7pm MST and the UTC date is already tomorrow;
-# using that would open the window a day late.
-read -r START END < <(python3 - "${CUTOFF_LOCAL}" <<'PY'
+HERE="$(cd "$(dirname "${0}")" && pwd)"
+. "${HERE}/_preflight.sh"
+
+# The cutoff as an epoch, and a refusal if it has passed -- keys minted after it
+# would be born dead.
+read -r CUTOFF_EPOCH CUTOFF_UTC < <(python3 - "${CUTOFF_LOCAL}" <<'PY'
 import sys
-from datetime import datetime, timezone, timedelta
-mst = timezone(timedelta(hours=-7))
-start = datetime.now(mst).replace(hour=0, minute=0, second=0, microsecond=0)
+from datetime import datetime, timezone
 end = datetime.fromisoformat(sys.argv[1])
-fmt = lambda d: d.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-print(fmt(start), fmt(end))
+print(int(end.timestamp()), end.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
 PY
 )
-
-now_utc=$(python3 -c "from datetime import datetime,timezone;print(datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
-if [[ "${now_utc}" > "${END}" ]]; then
-  echo "refusing to mint: the hard cutoff ${END} has already passed." >&2
-  echo "the keys would be born dead. edit CUTOFF_LOCAL if the workshop moved." >&2
+now_epoch=$(python3 -c 'import time; print(int(time.time()))')
+if [ "${now_epoch}" -ge "${CUTOFF_EPOCH}" ]; then
+  echo "refusing to mint: the cutoff ${CUTOFF_UTC} has already passed." >&2
+  echo "the keys would be born dead. pass --cutoff if the workshop moved." >&2
   exit 1
 fi
 
-echo "window:  ${START}  ..  ${END}   (cutoff ${CUTOFF_LOCAL})"
-echo "seats:   ${SEATS}, key self-expiry: ${DAYS} days"
+hours=$(( (CUTOFF_EPOCH - now_epoch) / 3600 ))
+echo "cutoff:  ${CUTOFF_UTC}  (${CUTOFF_LOCAL}) -- ${hours}h from now"
+echo "seats:   ${SEATS}"
 echo
-
-POLICY_ARN="arn:aws:iam::${ACCOUNT}:policy/${POLICY_NAME}"
-aws iam get-policy --policy-arn "${POLICY_ARN}" >/dev/null 2>&1 || {
-  echo "missing policy ${POLICY_NAME} -- create it first" >&2; exit 1; }
-
-echo "== group ${GROUP}"
-aws iam get-group --group-name "${GROUP}" >/dev/null 2>&1 \
-  || aws iam create-group --group-name "${GROUP}" >/dev/null
-aws iam attach-group-policy --group-name "${GROUP}" --policy-arn "${POLICY_ARN}"
-
-# Two separate Deny statements: conditions inside ONE statement are AND'ed, so
-# "before start" and "after end" cannot share a statement.
-W=$(mktemp -t window)
-cat > "${W}" <<JSON
-{"Version":"2012-10-17","Statement":[
- {"Sid":"DenyBeforeToday","Effect":"Deny","Action":"*","Resource":"*",
-  "Condition":{"DateLessThan":{"aws:CurrentTime":"${START}"}}},
- {"Sid":"DenyAfterWorkshop","Effect":"Deny","Action":"*","Resource":"*",
-  "Condition":{"DateGreaterThan":{"aws:CurrentTime":"${END}"}}}]}
-JSON
-aws iam put-group-policy --group-name "${GROUP}" \
-  --policy-name workshop-time-window --policy-document "file://${W}"
-rm -f "${W}"
-echo "== time window applied"
-
-umask 077
-printf 'seat,user,alias,credential_id,expires,api_key\n' > "${OUT}"
-for i in $(seq -f '%02g' 1 "${SEATS}"); do
-  u="${PREFIX}-${i}"
-  aws iam get-user --user-name "${u}" >/dev/null 2>&1 || \
-    aws iam create-user --user-name "${u}" --tags \
-      Key=purpose,Value=tm-workshop Key=seat,Value="${i}" \
-      Key=cutoff,Value="${END}" Key=managed-by,Value=mint-attendee-keys >/dev/null
-  aws iam add-user-to-group --group-name "${GROUP}" --user-name "${u}" 2>/dev/null || true
-  aws iam create-service-specific-credential --user-name "${u}" \
-      --service-name bedrock.amazonaws.com --credential-age-days "${DAYS}" --output json \
-    | python3 -c "
-import json,sys,csv
-c=json.load(sys.stdin)['ServiceSpecificCredential']
-csv.writer(sys.stdout).writerow(['${i}','${u}',c['ServiceCredentialAlias'],
-  c['ServiceSpecificCredentialId'],c.get('ExpirationDate',''),c['ServiceCredentialSecret']])" >> "${OUT}"
-  echo "  seat ${i} -> ${u}"
-done
-chmod 600 "${OUT}"
-echo
-echo "Wrote ${OUT} ($(($(wc -l < "${OUT}")-1)) keys, mode 0600)."
-echo "Usable ${START} .. ${END}; each key also self-expires after ${DAYS} days."
+python3 "${HERE}/_mint.py" "${LLM_PROJECT_ID}" "${SEATS}" "${CUTOFF_EPOCH}" "${PREFIX}" "${OUT}"

@@ -27,8 +27,7 @@ from pathlib import Path
 SNIPPET = """\
 # Workshop credential -- seat {seat}. Expires {expires}.
 # Paste these lines into the .env file in the workshop repo.
-AWS_BEARER_TOKEN_BEDROCK={key}
-AWS_REGION_NAME=us-east-1
+LLM_API_KEY={key}
 LITELLM_MASTER_KEY=sk-workshop
 """
 
@@ -80,15 +79,17 @@ document.getElementById('find').oninput=e=>{const q=e.target.value.trim();
 REQUIRED_COLUMNS = {"seat", "expires", "api_key"}
 
 # What a card is allowed to contain. Anything else is a bug upstream or
-# tampering, and either way must not reach 50 printed QR codes.
+# tampering, and either way must not reach 50 printed QR codes. The prefix is
+# deliberately narrow: an admin key (sk-admin-...) administers the whole
+# organisation and must never be printable onto a card, so matching a bare
+# "sk-" is not good enough.
 SEAT_RE = re.compile(r"^[0-9]{1,3}$")
-KEY_RE = re.compile(r"^ABSK[A-Za-z0-9+/=]{40,400}$")
+KEY_RE = re.compile(r"^sk-(svcacct|proj)-[A-Za-z0-9_-]{20,400}$")
 EXPIRES_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.+-]{5,20}(Z|[0-9]{2}:[0-9]{2})?$")
-# The payload is pasted into .env, and scripts/bedrock-check.sh sources .env
-# with the shell. A newline would inject an extra assignment; $() or backticks
+# The payload is pasted into .env, which scripts/llm-check.sh parses. A newline would inject an extra assignment; $() or backticks
 # would execute. None of these can appear in any field.
 FORBIDDEN = re.compile(r"[\r\n`$;|&<>\\]")
-EXPECTED_KEYS = ("AWS_BEARER_TOKEN_BEDROCK", "AWS_REGION_NAME", "LITELLM_MASTER_KEY")
+EXPECTED_KEYS = ("LLM_API_KEY", "LITELLM_MASTER_KEY")
 
 
 class CardError(Exception):
@@ -103,7 +104,7 @@ def validate_row(row: dict) -> None:
     if not SEAT_RE.match(seat or ""):
         raise CardError(f"seat is not a plain number: {seat!r}")
     if not KEY_RE.match(key or ""):
-        raise CardError(f"api_key is not a Bedrock API key: {key[:12]!r}...")
+        raise CardError(f"api_key is not a workshop API key: {key[:12]!r}...")
     if expires and not EXPIRES_RE.match(expires):
         raise CardError(f"expires is not an ISO timestamp: {expires!r}")
 
@@ -121,7 +122,7 @@ def audit_payload(payload: str, row: dict) -> None:
         if k not in EXPECTED_KEYS:
             raise CardError(f"unexpected variable in snippet: {k!r}")
         got[k] = v
-    if got["AWS_BEARER_TOKEN_BEDROCK"] != row["api_key"]:
+    if got["LLM_API_KEY"] != row["api_key"]:
         raise CardError("token in snippet does not match the CSV")
 
 

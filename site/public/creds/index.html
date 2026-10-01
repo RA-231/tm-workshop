@@ -56,7 +56,7 @@ leaves this machine — the page runs entirely in your browser.</p>
 </div>
 
 <p class="note">No camera? Type the lines from your card into <code>.env</code> by
-hand — they're the same three lines.</p>
+hand — they're the same two lines.</p>
 
 <script src="jsQR.js"></script>
 <script>
@@ -104,8 +104,8 @@ hand — they're the same three lines.</p>
   // A QR is opaque to the person holding it, so the page refuses to put
   // arbitrary decoded text in front of you to paste into a file that other
   // scripts read. Shape is checked, not trusted.
-  const ALLOWED = ['AWS_BEARER_TOKEN_BEDROCK', 'AWS_REGION_NAME', 'LITELLM_MASTER_KEY'];
-  const KEY_RE = /^ABSK[A-Za-z0-9+/=]{40,400}$/;
+  const ALLOWED = ['LLM_API_KEY', 'LITELLM_MASTER_KEY'];
+  const KEY_RE = /^sk-(svcacct|proj)-[A-Za-z0-9_-]{20,400}$/;
   const FORBIDDEN = /[`$;|&<>\\]/;
 
   function reasonInvalid(text) {
@@ -121,7 +121,7 @@ hand — they're the same three lines.</p>
       if (!ALLOWED.includes(name)) return 'It sets ' + name + ', which is not part of a card.';
       seen[name] = line.slice(i + 1);
     }
-    if (!KEY_RE.test(seen.AWS_BEARER_TOKEN_BEDROCK || '')) return 'The token is not a Bedrock API key.';
+    if (!KEY_RE.test(seen.LLM_API_KEY || '')) return 'The key is not a workshop API key.';
     return null;
   }
 
