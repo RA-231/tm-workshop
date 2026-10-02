@@ -14,4 +14,6 @@ RUN npm run build
 
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
+# Keeps the published port in directory redirects -- see the comment in the file.
+COPY site/nginx/default.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
