@@ -38,3 +38,7 @@ site/public/creds/test-card.png
 
 # Gateway model list, generated at run time from whatever your key can reach
 litellm/config.generated.yaml
+
+# Fetched at build time from the pinned jsqr npm dependency, not committed
+site/public/creds/jsQR.js
+site/public/creds/jsQR.LICENSE

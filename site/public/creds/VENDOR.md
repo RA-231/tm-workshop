@@ -1,32 +1,39 @@
-# Vendored dependency
+# The scanner's QR decoder
 
-`jsQR.js` — jsQR **1.4.0**, **Apache-2.0**, https://github.com/cozmo/jsQR
-The upstream licence text is alongside it as `jsQR.LICENSE`, because Apache-2.0
-requires it to travel with redistributed code and this file ships both in the
-repo and inside the docs image.
+`creds/jsQR.js` is **not in this repo**. It is [jsQR](https://github.com/cozmo/jsQR)
+**1.4.0**, Apache-2.0, pinned as a dependency in `site/package.json` and copied
+out of `node_modules` into the published site by `site/Dockerfile` at build time.
+`creds/jsQR.LICENSE` comes along with it, because Apache-2.0 requires the licence
+to travel with redistributed code and the built image redistributes it.
 
-## Why it is checked in rather than loaded from a CDN
+Both files appear when you run `task up:docs`, and both are gitignored.
 
-This page runs at a conference, on a network nobody should trust, and it handles
-a live credential. A CDN `<script>` is a third party who can change the code
-between the attendee and us, and it fails entirely when the venue wifi does. A
-vendored copy works with the network unplugged and can be audited at a commit.
+## Why a dependency rather than a committed copy
 
-## Provenance, verified 2026-10-01
+It used to be committed — a 250KB minified blob, pinned by a hash written into
+this file by hand. The dependency is better on every axis that matters:
 
-The file is the published `dist/jsQR.js` from the npm package, unmodified:
+- **npm verifies it.** `package-lock.json` carries
+  `sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==`
+  and checks it on every install. A vendored file is only as trustworthy as the
+  person who last looked at it.
+- **The build was never offline anyway.** `site/Dockerfile` runs `npm install`
+  for Astro, so vendoring one file while fetching hundreds bought nothing.
+- **Nothing to review in a diff.** Minified bundles are unreadable in review;
+  a version bump in a lockfile is not.
 
-```
-npm integrity (jsqr-1.4.0.tgz)  sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==
-sha256 of jsQR.js               bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859
-size                            256885 bytes
-```
+The property that *is* worth keeping is that the **page** makes no network
+requests once built: the decoder is served from the same origin as the page, not
+from a CDN at run time. A conference network should never sit between an
+attendee and the code that reads their credential. That still holds — the fetch
+happens at build, on your machine, not in their browser.
 
-To re-verify, or to check a future update:
+## Verifying it, if you want to
 
 ```bash
+docker compose exec docs sha256sum /usr/share/nginx/html/creds/jsQR.js
+# expect bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859
+
 curl -sO https://registry.npmjs.org/jsqr/-/jsqr-1.4.0.tgz
-shasum -a 512 jsqr-1.4.0.tgz          # compare with the integrity hash above
-tar xzOf jsqr-1.4.0.tgz package/dist/jsQR.js | shasum -a 256
-shasum -a 256 site/public/creds/jsQR.js   # must match the line above
+tar xzOf jsqr-1.4.0.tgz package/dist/jsQR.js | sha256sum   # must match
 ```

@@ -1,0 +1,20 @@
+# Applies to the repo-root build context, which only the `docs` image uses
+# (every other service builds from its own subdirectory).
+
+# Never ship a local install into the image: the build runs its own `npm ci`
+# and the QR decoder is copied out of THAT node_modules, whose integrity npm
+# verified. A stale local copy would silently win.
+**/node_modules
+site/dist
+site/.astro
+
+# Nothing below is read by the build; keeping it out makes the context small
+# and keeps minted credentials away from the Docker daemon entirely.
+.git
+data/
+checkpoints/
+attendee-keys.csv
+dryrun-keys.csv
+handouts/
+handouts-dryrun/
+.claude/

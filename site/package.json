@@ -12,7 +12,8 @@
     "preview": "astro preview"
   },
   "dependencies": {
+    "@astrojs/starlight": "^0.41.3",
     "astro": "^7.0.6",
-    "@astrojs/starlight": "^0.41.3"
+    "jsqr": "1.4.0"
   }
 }
