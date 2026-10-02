@@ -109,6 +109,51 @@ tasks:
       - echo "LibreChat -> http://localhost:3080  (register any account)"
       - echo "LiteLLM dashboard -> http://localhost:4000/ui  (log in as admin, password = LITELLM_MASTER_KEY from your .env)"
 
+  keys:models:
+    desc: "Facilitator: list the models the workshop project can reach"
+    cmds:
+      - ./scripts/admin/list-models.sh --check
+
+  keys:mint:
+    desc: "Facilitator: mint one key per seat (SEATS=50 by default)"
+    cmds:
+      - ./scripts/admin/mint-attendee-keys.sh --seats ${SEATS:-50}
+      - ./scripts/admin/make-handouts.py
+      - echo "Cards in handouts/. AirDrop handouts/phone.html to your co-facilitator."
+
+  keys:dryrun:
+    desc: "Facilitator: rehearse the whole mint -> cards flow with 3 keys that die in an hour"
+    cmds:
+      # A separate prefix so these never collide with the real tmws-NN seats, and
+      # a one-hour cutoff so the keys expire on their own if cleanup is forgotten.
+      - ./scripts/admin/list-models.sh --check
+      - ./scripts/admin/mint-attendee-keys.sh
+          --seats 3 --prefix dryrun
+          --cutoff "$(date -u -v+1H +%Y-%m-%dT%H:%M:%S+00:00)"
+          --out dryrun-keys.csv
+      - ./scripts/admin/make-handouts.py --csv dryrun-keys.csv --out handouts-dryrun
+      # silent: task would otherwise echo the whole heredoc before running it,
+      # printing these instructions twice.
+      - cmd: |
+          cat <<'NOTE'
+
+          Rehearsal minted 3 keys, expiring in one hour.
+
+          Check by hand, in this order:
+            1. handouts-dryrun/seat-01.png  -- open it on your phone
+            2. http://localhost:4321/creds  -- Start camera, hold the QR up
+                                               (task up:docs first if it is not running)
+            3. paste the two lines it decodes into .env
+            4. task llm:check               -- should list the models and say "ok"
+            5. task up:chat                 -- then say hello in LibreChat
+
+          Clean up when done:
+            rm -rf dryrun-keys.csv handouts-dryrun
+            delete the three dryrun-NN service accounts in the provider dashboard
+            (their keys expire on their own; this just tidies the list)
+          NOTE
+        silent: true
+
   up:mcp:
     desc: Build + start the three MCP servers (esa-adb, trino, superset) and reload LibreChat
     cmds:

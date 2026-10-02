@@ -12,7 +12,11 @@
 # visible even though per-key spend *limits* do not exist (the project's
 # monthly hard limit is shared across all seats -- see README.md).
 #
-#   ./mint-attendee-keys.sh [--seats 50]
+#   ./mint-attendee-keys.sh [--seats 50] [--prefix tmws] [--cutoff ISO8601]
+#
+# Use a different --prefix for rehearsals: seat names are skipped if they already
+# exist, so dry-run accounts called tmws-NN would make the real mint skip those
+# seats and hand out keys that expired hours earlier.
 #
 # Writes attendee-keys.csv (mode 0600) -- the only copy of the keys.
 set -euo pipefail
@@ -27,6 +31,7 @@ CUTOFF_LOCAL="2026-10-06T23:59:59-07:00"
 while [ $# -gt 0 ]; do
   case "$1" in
     --seats)  SEATS=$2; shift 2 ;;
+    --prefix) PREFIX=$2; shift 2 ;;
     --cutoff) CUTOFF_LOCAL=$2; shift 2 ;;
     --out)    OUT=$2;   shift 2 ;;
     *) echo "unknown arg: $1" >&2; exit 1 ;;

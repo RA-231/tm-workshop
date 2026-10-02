@@ -31,6 +31,8 @@ scripts/admin/attendee-keys.csv
 scripts/admin/handouts/
 attendee-keys.csv
 handouts/
+dryrun-keys.csv
+handouts-dryrun/
 # local scanner test card (fake credential); regenerate as needed
 site/public/creds/test-card.png
 
