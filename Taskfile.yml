@@ -149,6 +149,15 @@ tasks:
       - ./scripts/admin/make-handouts.py
       - echo "Cards in handouts/. AirDrop handouts/phone.html to your co-facilitator."
 
+  keys:reset:
+    desc: "Facilitator: delete the existing seats and mint fresh ones (SEATS=50)"
+    cmds:
+      # Mint skips names that already exist, so a re-mint has to delete first.
+      - ./scripts/admin/delete-attendee-keys.sh
+      - ./scripts/admin/mint-attendee-keys.sh --seats ${SEATS:-50}
+      - ./scripts/admin/make-handouts.py
+      - echo "Fresh cards in handouts/. The previous ones no longer work."
+
   keys:dryrun:
     desc: "Facilitator: rehearse the whole mint -> cards flow with 3 keys that die in an hour"
     cmds:
