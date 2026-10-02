@@ -66,93 +66,6 @@ SELECT count(*) FROM iceberg.esa_adb.readings
 FOR VERSION AS OF <snapshot_id>;
 ```
 
-### What the provenance columns cost
-
-Step 1 added five columns recording where each row came from. Logically that's
-a value on every one of the 27 million rows. Physically it's almost nothing,
-and the reason is the same machinery as above.
-
-Each Flink writer task reads one input file, so within any given Parquet file
-`source_file` is the *same string on every row* — and `run_id`, `ingest_ts`
-and `ingest_mode` are constant across the whole load. Parquet stores a column
-chunk per column per row group, and for a constant column that chunk is a
-dictionary page holding one entry plus a run-length marker standing in for
-millions of repeats. You pay for the string roughly once per row group, not
-once per row.
-
-Adding columns also creates **no new files**. File count follows partitioning,
-writer parallelism and commit cadence — new columns become column chunks
-inside the files that already exist.
-
-The overhead that is real sits in the metadata rather than the data: Parquet
-footers gain a column chunk entry per column, and Iceberg manifests gain a
-`lower_bound` / `upper_bound` / `null_count` / `value_count` tuple per column
-per data file. That scales with file count, not row count.
-
-Measured on this warehouse the table runs about 4 bytes/row all-in — the five
-constant-per-file columns add only a low single-digit percent on top of the
-`channel, ts, ts_month, value` payload. Check the absolute size with:
-
-```sql
-SELECT count(*) AS files, sum(file_size_in_bytes) AS bytes,
-       round(1.0 * sum(file_size_in_bytes) / sum(record_count), 3) AS bytes_per_row
-FROM iceberg.esa_adb."readings$files";
-```
-
-Don't expect that number to be identical run to run. A lot of the per-row cost
-is fixed metadata *per file* — Parquet footers and the manifest stat tuples
-above — and the file count itself shifts with writer parallelism and checkpoint
-timing from one load to the next. The columns are cheap; the file count is the
-variable that actually moves the total.
-
-And it can buy something back — but only if you ask for it. Because
-`source_file` is constant within a file, its lower and upper bounds are equal,
-so `WHERE source_file = '...'` can skip whole files through the same manifest
-statistics that prune `ts_month` partitions.
-
-The catch is that Iceberg truncates string bounds to 16 characters by default.
-These paths all begin `/data/prepared/c…`, so truncated bounds are **identical
-for every file** and nothing prunes — the engine reads everything and filters
-row by row. `ingest.sql` therefore sets:
-
-```sql
-'write.metadata.metrics.column.source_file' = 'full'
-```
-
-which keeps the untruncated value in the manifest. Check the bounds yourself:
-
-```sql
-SELECT DISTINCT lower_bounds[5], upper_bounds[5]
-FROM iceberg.esa_adb."readings$files";
-```
-
-Then measure the difference — `EXPLAIN ANALYZE` reports splits read and rows
-filtered, which is where pruning shows up. The plain `EXPLAIN` cost estimate
-will *not* show it, because the optimizer has no statistics for this column:
-
-```sql
-EXPLAIN ANALYZE SELECT count(*) FROM iceberg.esa_adb.readings
-WHERE source_file = '/data/prepared/channels/channel_61.json';
-```
-
-On this dataset that takes the scan from every file — 17.4M rows and 791 MB
-of physical input — down to 180 files, 905k rows and 3.8 MB.
-
-Note it doesn't drop to a single file, and the reason is worth understanding.
-The table is partitioned by `ts_month`, not by channel, so one Parquet file
-holds whichever channels were active in that month. 180 is exactly the number
-of files whose `source_file` range spans `channel_61` — the planner skipped
-everything it possibly could. Pruning is bounded by how the data is laid out,
-not just by the statistics.
-
-It's a good lesson in its own right: a column only prunes if the statistics
-recorded about it can actually tell files apart — and even then, only as well
-as the physical layout allows.
-
-One caveat worth carrying: this is cheap *because* the values are constant per
-file. Per-row provenance — a source line number, a sequence ID — would defeat
-the dictionary and cost real bytes on every row.
-
 ## Views: enrich once, reuse everywhere
 
 `readings` carries the telemetry — `channel, ts, ts_month, value` — plus five
@@ -216,6 +129,103 @@ Build a first chart:
 Superset is issuing the same SQL you wrote by hand — check **SQL Lab → Query
 History** to see exactly what each chart ran, and notice the planner doing
 the same pruning for dashboards as it did for you.
+
+## An aside on tuning
+
+Nothing below is something to run — it's the layer underneath everything you
+just queried. Three knobs decide how much data an engine actually reads.
+
+### 1. Partitioning
+
+[`flink/sql/ingest.sql`](../flink/sql/ingest.sql) partitions the fact table on
+one column:
+
+```sql
+) PARTITIONED BY (ts_month)
+```
+
+Iceberg stores each file's partition value in the manifest, alongside the
+min/max statistics from earlier. So when a query filters on the partition
+column, the planner discards non-matching files by reading metadata alone —
+before opening a single Parquet file. Filtering `ts_month = '2000-03'` reads
+**one file and 142,705 rows** out of 168 files and 27.6 million rows.
+
+That's the whole mechanism, and it explains its limits. Pruning is only as good
+as the column you partitioned on: a filter on `ts` still skips files via
+min/max statistics, but only a filter on `ts_month` eliminates partitions
+outright. And granularity is a trade — finer partitions prune better but make
+every file smaller, which the next section shows is its own problem.
+
+### 2. Compaction, and why streaming needs it
+
+A streaming job doesn't write one file per partition. It writes one file per
+open partition **per commit**, and it commits on the checkpoint interval:
+
+```sql
+SET 'execution.checkpointing.interval' = '5s';
+```
+
+Short commit windows are the normal choice for streaming — they bound how much
+work a failure replays and how quickly rows become visible — but every one of
+them closes the current files and starts new ones. This load committed 10 times
+and produced **842 files across 168 partitions**, roughly five per partition,
+averaging 126 KB. The data is correct; the packaging is poor. That's the
+standing tax of streaming ingest, and it gets worse the shorter the window.
+
+Compaction rewrites those into fewer, larger files — in Trino one statement,
+wired up here as `task trino:optimize`:
+
+```sql
+ALTER TABLE iceberg.esa_adb.readings EXECUTE optimize;
+```
+
+Result on this warehouse: **842 files averaging 126 KB become 168 averaging
+641 KB** — exactly one per partition, a 5× consolidation of identical data.
+That matters because file count is a fixed tax: splitting the same rows and
+bytes across 918 files instead of 98 measured ~3× the scan CPU, paid on every
+query and buying nothing.
+
+Two things to know about it. Compaction adds a snapshot rather than deleting
+anything, so the pre-compaction files remain available for time travel until a
+separate `expire_snapshots` clears them. And it only ever merges files **within**
+a partition — so your partition granularity sets a ceiling on how large a
+compacted file can be. Compaction cleans up after a load; it cannot rescue a
+layout partitioned too finely to begin with.
+
+### 3. Bloom filters, for the column you didn't partition on
+
+Compaction has a side effect worth seeing. Before it runs, the data happens to
+be clustered by channel — each input file holds one channel — so a channel
+filter skips files for free via min/max statistics. Compaction merges every
+channel in a month into one file, so afterwards `WHERE channel = 'channel_61'`
+reads **all 27.6M rows across all 168 files**. That clustering was accidental,
+and compaction spent it.
+
+`channel` is not the partition column and shouldn't be — partitioning on it
+multiplies partition count and shrinks every file. A bloom filter is the tool
+for exactly this case: a small per-row-group index that answers "is this value
+definitely absent here?", requiring no clustering and no extra partitions.
+
+```sql
+ALTER TABLE iceberg.esa_adb.readings
+  SET PROPERTIES parquet_bloom_filter_columns = ARRAY['channel'];
+```
+
+Measured on a 5.4M-row slice where only 104,998 rows match the filter:
+
+| approach | rows read |
+|---|---|
+| nothing | 1,193,591 |
+| sort by channel | 725,278 |
+| **bloom filter on channel** | **336,966** |
+
+A bloom filter narrows rather than eliminates — it's probabilistic, it's
+evaluated per row group at read time, and it only helps equality predicates.
+What it buys is selectivity on a column you can't justify partitioning on, at a
+cost that doesn't grow with the number of distinct values. That's the dividing
+line: partition on the handful of columns you filter by constantly, and reach
+for a bloom filter for the rest.
+
 
 ---
 

@@ -96,6 +96,11 @@ tasks:
     cmds:
       - docker compose exec -T trino trino --catalog iceberg --schema esa_adb -f /etc/trino/views.sql
 
+  trino:optimize:
+    desc: (Optional) Compact the small files the streaming load leaves behind
+    cmds:
+      - docker compose exec -T trino trino --catalog iceberg --schema esa_adb -f /etc/trino/optimize.sql
+
   up:query:
     desc: Start the query stack (Trino, Superset)
     cmds:

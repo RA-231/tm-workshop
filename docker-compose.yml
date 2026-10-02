@@ -158,6 +158,7 @@ services:
     volumes:
       - ./trino/catalog/iceberg.properties:/etc/trino/catalog/iceberg.properties:ro
       - ./trino/views.sql:/etc/trino/views.sql:ro
+      - ./trino/optimize.sql:/etc/trino/optimize.sql:ro
     depends_on:
       - polaris
       - garage

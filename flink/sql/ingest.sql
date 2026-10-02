@@ -55,12 +55,14 @@ CREATE DATABASE IF NOT EXISTS polaris.esa_adb;
 --    of the table when you filter on time, without creating thousands of tiny
 --    daily partitions. The smaller Parquet row group keeps the streaming
 --    writer's memory bounded when many partitions are open at once.
--- `task flink:job` drops the tables first, metadata-only, via the catalog's
--- REST API (scripts/drop-tables.sh) — so re-running the load never appends
--- dupes. Flink's own DROP TABLE always demands a purge, which makes Polaris
--- delete every old data file in the background and starve its S3 pool while
--- this very load is trying to commit. A plain CREATE here is deliberate: if
--- the table somehow still exists, fail loudly rather than silently append.
+--
+--    `task flink:job` drops the tables first, metadata-only, via the catalog's
+--    REST API (scripts/drop-tables.sh), so re-running the load never appends
+--    dupes. Flink's own DROP TABLE always demands a purge, which makes Polaris
+--    delete every old data file in the background and starve its S3 pool while
+--    this very load is still committing. A plain CREATE here is deliberate: if
+--    the table somehow still exists, fail loudly rather than silently append.
+--
 --    The five provenance columns are ordinary Iceberg columns — no METADATA,
 --    no VIRTUAL. They record where each row came from and which load wrote it.
 CREATE TABLE polaris.esa_adb.readings (
@@ -75,11 +77,7 @@ CREATE TABLE polaris.esa_adb.readings (
     ingest_mode  STRING
 ) PARTITIONED BY (ts_month) WITH (
     'format-version' = '2',
-    'write.parquet.row-group-size-bytes' = '16777216',
-    -- Iceberg truncates string bounds to 16 chars by default, which for these
-    -- paths is '/data/prepared/c' for every file — identical, so nothing can
-    -- prune. Keep the full value so WHERE source_file = '...' skips files.
-    'write.metadata.metrics.column.source_file' = 'full'
+    'write.parquet.row-group-size-bytes' = '16777216'
 );
 
 -- 4. Connect them. Reads all the JSON, writes Iceberg, commits per checkpoint.
