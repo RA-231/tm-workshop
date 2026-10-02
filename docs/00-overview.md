@@ -32,7 +32,7 @@ telemetry platform out of open source parts, then teach an LLM to use it.
                     │         └──────────────┼────────────┘                    │
                     └────────────────────────┼─────────────────────────────────┘
                                              ▼
-                                       AWS Bedrock (Claude)
+                                     the model provider
 ```
 
 ## The three acts
@@ -54,7 +54,7 @@ Iceberg's metadata makes queries fast (partition pruning, file skipping).
 **Act 3 — Interacting with Trino using MCP (Steps 3–4).**
 The **Model Context Protocol (MCP)** is how we hand tools to an LLM. We'll run
 **LibreChat** as the chat UI, route model calls through **LiteLLM** to AWS
-Bedrock, and then build our own MCP server with **FastMCP** that lets Claude
+the gateway, and then build our own MCP server with **FastMCP** that lets the model
 explore and query the telemetry warehouse — "which channel had the most
 anomalous March?" becomes a conversation instead of a SQL session.
 

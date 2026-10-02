@@ -1,9 +1,10 @@
 # LibreChat configuration for the workshop.
 #
-# One custom endpoint: LiteLLM, which fronts AWS Bedrock. LibreChat could
-# talk to Bedrock directly, but routing through LiteLLM means the shared AWS
-# credential lives in exactly one service and every client gets a plain
-# OpenAI-compatible API. (See docs/03-chat.md for the full trade-off.)
+# One custom endpoint: LiteLLM, the gateway. LibreChat could talk to the model
+# provider directly, but routing through LiteLLM means your credential lives in
+# exactly one service, every client gets the same OpenAI-compatible API, and
+# budgets and spend tracking have somewhere to live.
+# (See docs/03-chat.md for the full trade-off.)
 
 version: 1.2.1
 cache: true
@@ -47,10 +48,11 @@ endpoints:
       apiKey: "${LITELLM_MASTER_KEY}"
       baseURL: "http://litellm:4000/v1"
       models:
-        # fetch: true auto-discovers whatever LiteLLM exposes, so this list
-        # just seeds the picker order. Keep it in sync with litellm/config.yaml.
-        default: ["claude-sonnet-5", "claude-sonnet-4-6", "deepseek-r1", "gpt-oss-120b", "gpt-oss-20b"]
+        # No list here on purpose: fetch: true asks LiteLLM what it serves, and
+        # LiteLLM serves whatever your key can reach. Add or remove a model
+        # upstream and the picker follows -- nothing in this repo to edit.
+        default: ["workshop-default"]
         fetch: true
       titleConvo: true
-      titleModel: "claude-sonnet-5"
-      modelDisplayLabel: "Bedrock (LiteLLM)"
+      titleModel: "workshop-default"
+      modelDisplayLabel: "Workshop Models"

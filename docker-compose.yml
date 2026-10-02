@@ -194,21 +194,24 @@ services:
 
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
-    command: ["--config", "/etc/litellm/config.yaml"]
+    # config.generated.yaml is written by scripts/render-litellm-config.py (run
+    # by `task up:chat`) and holds the models your key can actually reach.
+    command: ["--config", "/etc/litellm/config.generated.yaml"]
     ports:
       - "4000:4000"
     environment:
-      # Your Bedrock credential lives HERE and nowhere else. It is a bearer
-      # token scoped to Bedrock alone -- not an AWS access key.
-      AWS_BEARER_TOKEN_BEDROCK: ${AWS_BEARER_TOKEN_BEDROCK:-}
-      AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
+      # Your model credential lives HERE and nowhere else.
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      WORKSHOP_DEFAULT_MODEL: ${WORKSHOP_DEFAULT_MODEL:-}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-workshop}
       DATABASE_URL: postgresql://litellm:litellm@litellm-postgres:5432/litellm
       # The dashboard signs in with the master key as the password.
       UI_USERNAME: ${LITELLM_UI_USERNAME:-admin}
       UI_PASSWORD: ${LITELLM_MASTER_KEY:-sk-workshop}
     volumes:
-      - ./litellm/config.yaml:/etc/litellm/config.yaml:ro
+      # The directory, not the single file: a missing generated config then fails
+      # loudly in the container instead of Docker creating a stray directory.
+      - ./litellm:/etc/litellm:ro
     depends_on:
       litellm-postgres:
         condition: service_healthy

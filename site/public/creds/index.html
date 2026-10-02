@@ -1,0 +1,161 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scan your workshop credential</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 -apple-system, system-ui, sans-serif; margin: 0 auto;
+         padding: 24px; max-width: 720px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.lead { margin: 0 0 20px; opacity: .8; }
+  #stage { position: relative; background: #000; border-radius: 10px;
+           overflow: hidden; aspect-ratio: 4/3; display: none; }
+  video, canvas { width: 100%; display: block; }
+  canvas { position: absolute; inset: 0; }
+  button { font: inherit; padding: 9px 16px; border-radius: 8px;
+           border: 1px solid currentColor; background: transparent;
+           color: inherit; cursor: pointer; }
+  button.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .row { display: flex; gap: 10px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
+  pre { background: rgba(127,127,127,.12); padding: 14px; border-radius: 8px;
+        overflow-x: auto; font-size: 13px; }
+  .ok { color: #15803d; font-weight: 600; }
+  .err { color: #b91c1c; }
+  #result { display: none; }
+  .note { font-size: 13px; opacity: .75; }
+</style>
+
+<h1>Scan your workshop credential</h1>
+<p class="lead">Hold the QR code on your card up to this laptop's camera. Nothing
+leaves this machine — the page runs entirely in your browser.</p>
+
+<div class="row">
+  <button class="primary" id="start">Start camera</button>
+  <button id="stop" hidden>Stop</button>
+  <span id="status" class="note"></span>
+</div>
+
+<div id="stage"><video id="video" playsinline muted></video><canvas id="overlay"></canvas></div>
+
+<div id="rejected" style="display:none">
+  <p class="err"><strong>That code is not a workshop credential.</strong>
+  <span id="why"></span></p>
+  <p class="note">Nothing was copied or displayed. Ask a facilitator for a card,
+  or type the three lines from your card into <code>.env</code> by hand.</p>
+  <div class="row"><button class="primary" id="again">Scan again</button></div>
+</div>
+
+<div id="result">
+  <p class="ok">Got it. Paste this into <code>.env</code> in the workshop repo:</p>
+  <pre id="text"></pre>
+  <div class="row">
+    <button class="primary" id="copy">Copy to clipboard</button>
+    <span id="copied" class="note"></span>
+  </div>
+  <p class="note">Then: <code>task up:chat</code></p>
+</div>
+
+<p class="note">No camera? Type the lines from your card into <code>.env</code> by
+hand — they're the same two lines.</p>
+
+<script src="jsQR.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const video = $('video'), overlay = $('overlay'), ctx = overlay.getContext('2d', { willReadFrequently: true });
+  let stream = null, raf = null;
+
+  function setStatus(msg, isError) {
+    $('status').textContent = msg || '';
+    $('status').className = isError ? 'note err' : 'note';
+  }
+
+  async function start() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus('This browser will not share a camera with the page. Type the lines from your card instead.', true);
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
+    } catch (err) {
+      setStatus('Camera unavailable (' + err.name + '). Type the lines from your card instead.', true);
+      return;
+    }
+    video.srcObject = stream;
+    await video.play();
+    $('stage').style.display = 'block';
+    $('start').hidden = true; $('stop').hidden = false;
+    setStatus('Point the card at the camera…');
+    tick();
+  }
+
+  function tick() {
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      overlay.width = video.videoWidth; overlay.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, overlay.width, overlay.height);
+      const img = ctx.getImageData(0, 0, overlay.width, overlay.height);
+      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+      if (code && code.data) { show(code.data); return; }
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  // Only ever display something that looks exactly like a workshop credential.
+  // A QR is opaque to the person holding it, so the page refuses to put
+  // arbitrary decoded text in front of you to paste into a file that other
+  // scripts read. Shape is checked, not trusted.
+  const ALLOWED = ['LLM_API_KEY', 'LITELLM_MASTER_KEY'];
+  const KEY_RE = /^sk-(svcacct|proj)-[A-Za-z0-9_-]{20,400}$/;
+  const FORBIDDEN = /[`$;|&<>\\]/;
+
+  function reasonInvalid(text) {
+    if (FORBIDDEN.test(text)) return 'It contains shell characters that a credential never has.';
+    const lines = text.split(/\r?\n/).map((l) => l.trim())
+                      .filter((l) => l && !l.startsWith('#'));
+    if (lines.length !== ALLOWED.length) return 'It has ' + lines.length + ' settings; a card has ' + ALLOWED.length + '.';
+    const seen = {};
+    for (const line of lines) {
+      const i = line.indexOf('=');
+      if (i < 1) return 'One line is not NAME=value.';
+      const name = line.slice(0, i).trim();
+      if (!ALLOWED.includes(name)) return 'It sets ' + name + ', which is not part of a card.';
+      seen[name] = line.slice(i + 1);
+    }
+    if (!KEY_RE.test(seen.LLM_API_KEY || '')) return 'The key is not a workshop API key.';
+    return null;
+  }
+
+  function show(data) {
+    const bad = reasonInvalid(data);
+    if (bad) {
+      stop();
+      $('why').textContent = bad;
+      $('rejected').style.display = 'block';
+      setStatus('');
+      return;
+    }
+    stop();
+    $('text').textContent = data;
+    $('result').style.display = 'block';
+    setStatus('');
+  }
+
+  function stop() {
+    if (raf) cancelAnimationFrame(raf), raf = null;
+    if (stream) stream.getTracks().forEach((t) => t.stop()), stream = null;
+    $('stage').style.display = 'none';
+    $('start').hidden = false; $('stop').hidden = true;
+  }
+
+  $('again').onclick = () => { $('rejected').style.display = 'none'; start(); };
+  $('start').onclick = start;
+  $('stop').onclick = () => { stop(); setStatus('Stopped.'); };
+  $('copy').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText($('text').textContent);
+      $('copied').textContent = 'Copied.';
+    } catch {
+      $('copied').textContent = 'Copy failed — select the text above and copy manually.';
+    }
+  };
+</script>

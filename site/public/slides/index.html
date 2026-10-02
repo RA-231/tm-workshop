@@ -299,7 +299,7 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
     <b>Open with the ending.</b> Don't start with architecture — start by saying what they
     walk out with: an agent that finds a real, labelled ESA anomaly nobody told it about.
     <br/><b>Housekeeping:</b> Docker running? ~8&nbsp;GB RAM free? Wi-Fi + the mirror URL.
-    Hand out the AWS credential now so it's in .env before the break.
+    Hand out the key cards now so they're in .env before the break.
     <br/>Press <b>?</b> any time for deck keys. <b>n</b> = these notes, <b>p</b> = presenter window.
   </aside>
 </section>
@@ -399,7 +399,7 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
     <tr><td><b>1</b></td><td>Ingest telemetry into a table format</td><td class="dim">Flink · Iceberg · Polaris · Garage</td></tr>
     <tr><td><b>2</b></td><td>Query it, then chart it</td><td class="dim">Trino · Superset</td></tr>
     <tr><td>☕</td><td class="dim"><i>break</i></td><td></td></tr>
-    <tr><td><b>3</b></td><td>Put a model in front of it</td><td class="dim">LibreChat · LiteLLM · Bedrock</td></tr>
+    <tr><td><b>3</b></td><td>Put a model in front of it</td><td class="dim">LibreChat · LiteLLM · model gateway</td></tr>
     <tr><td><b>4</b></td><td>Give the model tools</td><td class="dim">MCP · FastMCP</td></tr>
     <tr><td><b>5</b></td><td>Compose it all into an agent</td><td class="dim">3 MCP servers · one conversation</td></tr>
   </table>
@@ -427,7 +427,7 @@ task up:docs          <span class="c"># the front door</span></pre>
         <li>Docker (Compose v2)</li>
         <li><code>task</code> — taskfile.dev</li>
         <li>~8&nbsp;GB RAM for Docker, a few GB disk</li>
-        <li>The workshop AWS credential (Steps 3–5)</li>
+        <li>The workshop key card (Steps 3–5)</li>
       </ul>
       <p class="small dim">On the conference network set <code>DATA_MIRROR</code> in
         <code>.env</code> — pull from the room, not Zenodo.</p>
@@ -522,7 +522,7 @@ task up:docs          <span class="c"># the front door</span></pre>
     <rect class="b" x="900" y="266" width="210" height="66" rx="10" stroke="#3b3470"/>
     <text class="t"  x="920" y="296">LibreChat</text><text class="ts" x="920" y="316">chat UI · agents</text>
     <rect class="b" x="900" y="386" width="210" height="66" rx="10" stroke="#3b3470"/>
-    <text class="t"  x="920" y="416">LiteLLM → Bedrock</text><text class="ts" x="920" y="436">Claude, one gateway</text>
+    <text class="t"  x="920" y="416">LiteLLM → provider</text><text class="ts" x="920" y="436">one gateway</text>
     <path class="ln" d="M1005 336 V382"/>
     <path class="ln" d="M898 300 C 850 300, 800 380, 762 382"/><text class="lb" x="800" y="330">MCP</text>
   </svg>
@@ -942,7 +942,7 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
   <p class="lead">Fifteen minutes.</p>
   <div class="card amber" style="max-width:760px">
     <h3>While you're up</h3>
-    <p class="dim">Put the workshop <b>AWS credential</b> into <code>.env</code> now — copy
+    <p class="dim">Put the key from your <b>card</b> into <code>.env</code> now — copy
       <code>.env.example</code> if you haven't. Step 3 needs it the moment we're back.</p>
   </div>
   <p class="kicker">When we return: we stop writing the SQL ourselves.</p>
@@ -966,8 +966,8 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
     <div class="card violet"><h3>LibreChat</h3><p class="dim">Open source ChatGPT-style UI.
       Multi-user, any provider — and the reason we picked it: <b>first-class MCP support</b>.</p></div>
     <div class="card violet"><h3>LiteLLM</h3><p class="dim">An LLM gateway. One
-      OpenAI-compatible HTTP API in front of 100+ providers, Bedrock included.</p></div>
-    <div class="card violet"><h3>AWS Bedrock</h3><p class="dim">Where Claude actually runs,
+      OpenAI-compatible HTTP API in front of 100+ providers.</p></div>
+    <div class="card violet"><h3>The key on your card</h3><p class="dim">Scoped to the workshop model project,
       on the shared workshop credential.</p></div>
   </div>
   <pre style="margin-top:28px">task up:chat     <span class="c"># litellm, mongodb, librechat</span></pre>
@@ -978,17 +978,17 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
 <section class="slide" data-title="Step 3 · LiteLLM" data-accent="chat">
   <div class="chip">Step 3 · A real trade-off</div>
   <h2>Do we actually need LiteLLM?</h2>
-  <p class="lead">Honest answer: <b>for this workshop, no.</b> LibreChat speaks Bedrock natively.
+  <p class="lead">Honest answer: <b>for this workshop, no.</b> LibreChat speaks the OpenAI API natively.
      We could delete a whole service.</p>
   <p>We keep it on purpose:</p>
   <div class="cols-3">
-    <div class="card"><h3>1 · One place for the key</h3><p class="dim">The AWS credential lives
+    <div class="card"><h3>1 · One place for the key</h3><p class="dim">The credential lives
       in LiteLLM's environment and <b>nowhere else</b>. Every client gets a scoped master key
       instead.</p></div>
     <div class="card"><h3>2 · A control point</h3><p class="dim">Shared credential + 40
       attendees ⇒ you want per-key <b>rate limits and spend tracking</b>. A gateway is where
       that lives.</p></div>
-    <div class="card"><h3>3 · Swappability</h3><p class="dim">Point <code>claude-sonnet</code>
+    <div class="card"><h3>3 · Swappability</h3><p class="dim">Point <code>workshop-default</code>
       at a different provider; <b>no client changes</b>. Apps ask for a name, not an
       infrastructure.</p></div>
   </div>
@@ -1005,10 +1005,10 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
   <h2>The chat UI is <span class="thin">this one call</span></h2>
   <pre class="sm">curl -s http://localhost:4000/v1/chat/completions \
   -H <span class="s">"Authorization: Bearer sk-workshop"</span> -H <span class="s">"Content-Type: application/json"</span> \
-  -d <span class="s">'{"model": "claude-sonnet", "messages": [{"role": "user", "content": "ping"}]}'</span></pre>
+  -d <span class="s">'{"model": "workshop-default", "messages": [{"role": "user", "content": "ping"}]}'</span></pre>
   <p class="lead">That same request, made by LibreChat on your behalf, is <em>everything</em> the
      chat window is doing.</p>
-  <p>Open a new chat → <b>Workshop Models → claude-sonnet</b> → say hello.</p>
+  <p>Open a new chat → <b>Workshop Models → workshop-default</b> → say hello.</p>
   <p class="kicker">If this curl fails, the UI will too — always debug at this layer first.</p>
 </section>
 
@@ -1208,7 +1208,7 @@ mcpServers:
     </defs>
     <rect class="b2" x="390" y="10" width="360" height="72" rx="12" stroke="#5e2c38"/>
     <text class="t2" x="416" y="42">LibreChat Agent</text>
-    <text class="ts2" x="416" y="64">Claude Sonnet on Bedrock · picks its own tools</text>
+    <text class="ts2" x="416" y="64">workshop-default · picks its own tools</text>
 
     <rect class="b2" x="40"  y="150" width="310" height="96" rx="12" stroke="#1c5350"/>
     <text class="t2" x="64" y="182">trino-mcp <tspan class="ts2">· explore</tspan></text>
@@ -1302,7 +1302,7 @@ mcpServers:
       <ol class="tight">
         <li>Pick <b>Agents</b> from the endpoint menu → open the <b>Agent Builder</b>.</li>
         <li><b>Name:</b> Telemetry Anomaly Analyst</li>
-        <li><b>Model:</b> Bedrock (LiteLLM) → <code>claude-sonnet-5</code></li>
+        <li><b>Model:</b> Workshop Models → <code>workshop-default</code></li>
         <li><b>Instructions:</b> the methodology prompt (next slide).</li>
         <li><b>Tools:</b> enable <b>esa-adb</b>, <b>trino</b>, <b>superset</b>.</li>
         <li><b>Save</b>, then <b>Share</b> so everyone can use it.</li>
@@ -1310,8 +1310,8 @@ mcpServers:
     </div>
     <div class="card rose">
       <h3>Two notes worth knowing</h3>
-      <p class="dim">Use a <b>strong tool-caller</b>. DeepSeek-R1 is available, but reasoning
-        models are weaker at the tool loop — use it to <em>interpret</em> results, not drive them.</p>
+      <p class="dim">Use <code>workshop-default</code>. The other models in the picker are fine
+        for chat, but not all of them can call tools on this path.</p>
       <p class="dim">v0.8.7 has <b>no API to create an agent</b>. Sharing one you built is the
         reproducible path — not export/import.</p>
     </div>
@@ -1472,7 +1472,7 @@ phase+duration explanation, the chart URL, and your confidence.</pre>
   <ul>
     <li><b>Resources/prompts missing?</b> Expected — LibreChat doesn't surface them. Use Claude
         Desktop or Claude Code to see them.</li>
-    <li><b>Malformed tool calls?</b> Tool-calling through Bedrock-via-LiteLLM must be validated
+    <li><b>Malformed tool calls?</b> Tool-calling must be validated
         <em>per model</em>. Try <code>dropParams</code> on the custom endpoint, or switch models.
         <b>Sonnet is the reliable driver.</b></li>
     <li><b>Want to share your agent?</b> Use <b>Share</b> — there's no create API in 0.8.7.</li>
@@ -1505,7 +1505,7 @@ phase+duration explanation, the chart URL, and your confidence.</pre>
     <div class="card cyan">
       <h3>All of it</h3>
       <p class="dim" style="font-size:22px">open source · on a laptop · in Docker · in three hours ·
-        with no account anywhere except one AWS key</p>
+        with no account anywhere except one key on a card</p>
       <p class="dim">Every piece is independently deployable. None of it is a toy.</p>
     </div>
   </div>

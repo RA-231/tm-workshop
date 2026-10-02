@@ -25,3 +25,20 @@ site/src/content/docs/*.md
 
 # OS noise
 .DS_Store
+
+# Facilitator output: live attendee credentials. Never commit.
+scripts/admin/attendee-keys.csv
+scripts/admin/handouts/
+attendee-keys.csv
+handouts/
+dryrun-keys.csv
+handouts-dryrun/
+# local scanner test card (fake credential); regenerate as needed
+site/public/creds/test-card.png
+
+# Gateway model list, generated at run time from whatever your key can reach
+litellm/config.generated.yaml
+
+# Fetched at build time from the pinned jsqr npm dependency, not committed
+site/public/creds/jsQR.js
+site/public/creds/jsQR.LICENSE

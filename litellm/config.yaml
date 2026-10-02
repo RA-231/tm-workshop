@@ -1,70 +1,36 @@
-# LiteLLM gateway config: one OpenAI-compatible endpoint in front of AWS Bedrock.
+# LiteLLM gateway config: one OpenAI-compatible endpoint in front of the
+# workshop's model provider.
 #
-# Why a gateway at all? Your Bedrock credential goes in exactly one place --
-# here -- and every client (LibreChat, curl, your own scripts) gets a plain
-# OpenAI-style API with a master key you control, plus rate limiting and spend
-# tracking. That is the same shape a platform team runs in production.
+# Why a gateway at all? Your credential goes in exactly one place -- here -- and
+# every client (LibreChat today, your scripts tomorrow) gets a plain OpenAI-style
+# API with a master key you control, plus per-key budgets and spend tracking.
+# That is the same shape a platform team runs in production.
 #
-# The credential is a Bedrock API key: a bearer token that can ONLY call
-# Bedrock, carries its own expiry, and is not an AWS access key -- it grants no
-# console, no S3, no IAM. LiteLLM reads it as `api_key` per model, falling back
-# to the AWS_BEARER_TOKEN_BEDROCK environment variable.
-#
-# Model IDs below are verified against the workshop account (`task
-# bedrock:check`). Note the two Bedrock invocation styles:
-#   - Claude Sonnet models and DeepSeek-R1 are INFERENCE_PROFILE-only on Bedrock
-#     -- no on-demand option, so they MUST use the `us.` cross-region profile ID.
-#   - gpt-oss models are ON_DEMAND, invoked by their bare foundation-model ID.
-# Anthropic models also require the account's Anthropic use-case form to be
-# submitted (Bedrock console) -- otherwise invokes 404 with "use case details
-# have not been submitted", independent of IAM.
-#
-# `tools:` marks which models can drive the Step-4 MCP tools. Reasoning models
-# (deepseek) are for reasoning *over* query results, not for driving the tool
-# loop -- see docs/04-mcp-server.md.
+# NO MODEL NAMES LIVE IN THIS FILE. The project your key belongs to is scoped to
+# a set of models, and that set is the authority on what can be served -- it can
+# change without notice. `task llm:check` prints what is actually available. The
+# wildcard entry below forwards whatever the credential can reach, so a model
+# added or removed upstream needs no edit here and shows up in LibreChat's picker
+# on its next fetch.
 
 model_list:
-  # tools: yes  -- primary MCP/Trino tool driver. Claude Sonnet 5
-  #                (inference-profile only).
-  - model_name: claude-sonnet-5
+  # Everything the credential can reach, under its own name.
+  - model_name: "*"
     litellm_params:
-      model: bedrock/us.anthropic.claude-sonnet-5
-      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
-      aws_region_name: os.environ/AWS_REGION_NAME
+      model: openai/*
+      api_key: os.environ/LLM_API_KEY
 
-  # tools: yes  -- alternate tool driver. Claude Sonnet 4.6
-  #                (inference-profile only).
-  - model_name: claude-sonnet-4-6
+  # A stable alias the docs can name, so instructions stay correct when the
+  # lineup changes. Which model it points at lives in .env, not here.
+  #
+  # Pick a model that can drive tools: Steps 4 and 5 need function calling, and
+  # not every model in a project supports it on the chat-completions path --
+  # some require extra parameters, some only expose tools on another endpoint.
+  # `task llm:check` verifies the one you chose is still available.
+  - model_name: workshop-default
     litellm_params:
-      model: bedrock/us.anthropic.claude-sonnet-4-6
-      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
-      aws_region_name: os.environ/AWS_REGION_NAME
-
-  # tools: no   -- reasoning model; interpret results, don't call tools.
-  #                inference-profile only.
-  - model_name: deepseek-r1
-    litellm_params:
-      model: bedrock/us.deepseek.r1-v1:0
-      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
-      aws_region_name: os.environ/AWS_REGION_NAME
-
-  # tools: partial -- present but less proven via Bedrock+MCP; try, don't rely.
-  #                   on-demand foundation model (no `us.` profile prefix).
-  - model_name: gpt-oss-120b
-    litellm_params:
-      model: bedrock/openai.gpt-oss-120b-1:0
-      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
-      aws_region_name: os.environ/AWS_REGION_NAME
-
-  # tools: partial
-  - model_name: gpt-oss-20b
-    litellm_params:
-      model: bedrock/openai.gpt-oss-20b-1:0
-      api_key: os.environ/AWS_BEARER_TOKEN_BEDROCK
-      aws_region_name: os.environ/AWS_REGION_NAME
-
-  # Other families (claude-haiku, amazon.nova-*, meta.llama4-*) are intentionally
-  # not exposed for the workshop -- re-add a block like the above to enable one.
+      model: os.environ/WORKSHOP_DEFAULT_MODEL
+      api_key: os.environ/LLM_API_KEY
 
 litellm_settings:
   drop_params: true
