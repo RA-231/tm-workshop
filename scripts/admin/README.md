@@ -1,11 +1,11 @@
 # Facilitator scripts
 
-**Attendees need nothing here.** Your key comes on a card; see
+These scripts are for facilitators. Attendees receive a key on a card; see
 [docs/03-chat.md](../../docs/03-chat.md).
 
-These administer the workshop's model project and refuse to run without an admin
-credential. They contain no project id, no org name and no credentials — the
-project is resolved at run time.
+The scripts administer the workshop's model project and require an admin
+credential. The project is resolved at runtime; project IDs, organization names,
+and credentials are supplied externally.
 
 | Script | Purpose |
 | --- | --- |
@@ -13,13 +13,13 @@ project is resolved at run time.
 | `mint-attendee-keys.sh` | One expiring key per seat. Run the night before or the morning of. |
 | `make-handouts.py` | Turn the CSV into per-seat snippets, QR PNGs, a printable sheet and a self-contained `phone.html`. |
 
-## The day before / of
+## Before the workshop
 
 ```bash
 export LLM_ADMIN_KEY=$(secret get OPEN_AI_ADMIN_KEY)   # an sk-admin-... key
 export LLM_PROJECT_NAME="Space Software Summit"        # or LLM_PROJECT_ID
 
-./list-models.sh                             # confirm the lineup
+./list-models.sh                             # confirm available models
 ./mint-attendee-keys.sh --seats 50           # writes attendee-keys.csv (0600)
 ./make-handouts.py                           # writes handouts/ (0700)
 ```
@@ -37,44 +37,41 @@ up to the attendee's laptop camera while they have
 that state is per-device (`localStorage`), so it does not sync between
 facilitators.
 
-Because it does not sync, **split the seat ranges** rather than coordinating:
-one facilitator works 01–25, the other 26–50. Two people handed the same seat
-both work, but their usage merges in the provider's dashboard and revoking one
-revokes both.
+Assign separate seat ranges to each facilitator, such as 01–25 and 26–50.
+If two attendees receive the same seat's key, their usage is combined in the
+provider's dashboard, and revoking the key affects both.
 
-Send it to a co-facilitator by **AirDrop** or another device-to-device channel.
-Not email, not Slack — that file is 50 live credentials, and those systems keep
-copies you cannot delete.
+Transfer it to a co-facilitator using **AirDrop** or another device-to-device
+channel. Avoid email or Slack: the file contains 50 live credentials, and those
+services may retain copies.
 
 ## Expiry, revocation and spend
 
 **Expiry is automatic.** Every key is minted with an expiry set to the cutoff in
-`mint-attendee-keys.sh` (`CUTOFF_LOCAL`), so the whole cohort dies at the end of
-the workshop whether or not anyone remembers. Minting after the cutoff is
-refused rather than producing dead keys. There is no teardown script and none is
-needed.
+`mint-attendee-keys.sh` (`CUTOFF_LOCAL`). All keys expire at the end of the
+workshop, and the script refuses to mint keys after the cutoff. Expiry does not
+require a teardown script.
 
 **Revocation is manual, in the provider's dashboard** — delete the service
 account for that seat. It is permanent; there is no reversible disable. This is
 for the one-off case (a key posted in a public channel), not routine cleanup.
 
 **Spend control is the project's monthly hard limit**, set in the dashboard —
-there is no API for it. Two things to know:
+there is no API for it:
 
 - It is **shared across all 50 seats**. One attendee looping requests will
   exhaust it and every other seat starts getting `429
-  project_spend_limit_exceeded`. The limit protects the bill, not each other.
+  project_spend_limit_exceeded`.
 - There is **no per-key spend limit** at this provider — limits exist at
   organization and project scope only. Per-key *usage* is visible in the
   dashboard (grouped by the `tmws-NN` service-account name), so you can see who
   spent what after the fact, and act on it manually.
 
-The per-seat cap attendees actually get is LiteLLM's: `/key/generate` with
-`max_budget`, which Step 3 teaches. It runs on their own laptop, so it protects
-them from surprises rather than protecting the project.
+Attendees can set a per-key budget in LiteLLM using `/key/generate` with
+`max_budget`, as described in Step 3. This controls their local usage; it does
+not enforce a project-wide per-seat budget.
 
-**Rate limits are the control that actually bounds the damage**, because they
-cap the burn *rate* with no human in the loop and no reporting delay. The
+**Rate limits cap request and token throughput** automatically. The
 project's per-model limits were lowered from the defaults on 2026-10-01:
 
 | model | RPM | TPM | ceiling at ~$12/M tokens |
@@ -91,20 +88,20 @@ than spread across a day:
   is ~1.1M tokens (~$13); at agent turns carrying MCP tool results (~8k tokens)
   it is ~6M (~$72).
 - Worst case, everything saturated for the full 40 minutes: ~$577. That sits
-  just above the project's $500 monthly hard limit, so the limit is the real
-  backstop and the rate limits absorb bursts without tripping it.
-- `chat-latest` gets the headroom because `workshop-default` points at it and it
+  just above the project's $500 monthly hard limit, so the limit is the
+  spending cap. The rate limits constrain throughput during bursts.
+- `chat-latest` has a higher limit because `workshop-default` points at it and it
   is the only model that drives tools on this path. A synchronised Step 5 burst
   ("everyone run the agent now") is ~50 x 8k = 400k tokens in one minute, which
   200k TPM would have throttled. Its RPM is higher too: an agent turn is several
   API calls, one per tool round trip, not one.
 
-If it pinches during the dry run, raise it -- limits are per project and take
-effect immediately.
+If requests are throttled during the dry run, review the limits. Changes apply
+per project and take effect immediately.
 
 **Do not rely on watching the dashboard.** Usage data backfills on the order of
 20-30 minutes (measured: a sliding 2-hour window reported newer data on a later
 query with no calls in between). Revoking a key takes about 5 seconds once you
-decide to, but by the time a spike is visible it is already 20+ minutes old. The
-order of defence is: rate limits (immediate, automatic), then the monthly hard
-spend limit (lagging, automatic), then monitoring (lagging, manual).
+decide to, but a visible usage spike may already be 20+ minutes old. Rate limits
+act immediately; the monthly spend limit and manual monitoring depend on
+delayed usage reporting.

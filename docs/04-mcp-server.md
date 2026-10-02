@@ -1,24 +1,22 @@
 # Step 4 — Build an MCP Server for Trino
 
-We have a warehouse full of telemetry and a chat UI wired to a model. The last
-piece is teaching the model to *use* the warehouse. That's what the Model
-Context Protocol (MCP) does: it's a standard way to hand an LLM a set of
-tools — functions it can call, with typed inputs and outputs.
+We have a telemetry warehouse and a chat UI connected to a model. This step
+adds query tools using the Model Context Protocol (MCP), a standard for
+exposing tools to clients. Tools are functions with typed inputs and outputs.
 
-## Why not just paste SQL results into the chat?
+## 4.1 — Tool operations and query restrictions
 
-You could. But an MCP server gives the model *agency with guardrails*:
+With an MCP server, the model can request data as it works through a question:
 
-- The model decides **which** tool to call, **when**, and **how often** —
-  it can list tables, look at a schema, run a query, notice the answer is
-  wrong, and refine. That loop is where the magic is.
-- You decide **what's possible**. Our server only permits read-only queries
-  and caps result sizes. The model can't `DROP TABLE`, even if asked nicely.
+- The model selects tools to list tables, inspect schemas, and run queries.
+  It can use the results to revise a query or choose another tool.
+- The server restricts queries to read-only statements and caps result sizes.
+  Its query check rejects statements such as `DROP TABLE`.
 
-## The server
+## 4.2 — Inspect the MCP server implementation
 
-Open [`mcp-server/server.py`](../mcp-server/server.py). The whole thing is
-~150 lines using [FastMCP](https://gofastmcp.com). The essence:
+Open [`mcp-server/server.py`](../mcp-server/server.py), which uses
+[FastMCP](https://gofastmcp.com). A minimal example:
 
 ```python
 from fastmcp import FastMCP
@@ -33,24 +31,27 @@ def query(sql: str) -> dict:
 mcp.run(transport="http", host="0.0.0.0", port=8000)
 ```
 
-Three things to internalize:
+When defining a tool:
 
-1. **A tool is just a function.** FastMCP turns the signature into a JSON
+1. **Define a function.** FastMCP turns the signature into a JSON
    schema and the docstring into the tool description.
-2. **Docstrings are prompts.** The model reads them to decide when and how to
-   call your tool. `query`'s docstring tells the model to aggregate rather
-   than pull raw rows — watch it obey.
-3. **Specific beats general.** `channel_summary` does one thing with a fixed,
-   correct SQL statement. Compare how the model behaves with it vs. writing
-   its own SQL through `query`. Purpose-built tools are more reliable;
-   general tools are more flexible. Real MCP server design is choosing that
-   mix.
+2. **Describe its intended use.** The model reads the docstring to decide when
+   and how to call your tool. `query`'s docstring tells the model to aggregate rather
+   than pull raw rows. Check how it uses that guidance.
+3. **Choose the scope.** `channel_summary` runs a fixed SQL statement, while
+   `query` lets the model write SQL. A fixed query reduces opportunities for
+   SQL errors; a general query tool supports more questions. Compare how the
+   model uses each.
 
-## Run it
+## 4.3 — Start and connect the MCP server
+
+### 4.3.1 — Start the server
 
 ```bash
 task up:mcp        # builds and starts the server, registers it in LibreChat
 ```
+
+### 4.3.2 — Enable the server in LibreChat
 
 LibreChat discovers the server through `librechat/librechat.yaml`:
 
@@ -64,7 +65,7 @@ mcpServers:
 Reload LibreChat (`docker compose restart librechat`), open a new chat, and
 enable the **telemetry** MCP server in the tools menu.
 
-## Try it
+## 4.4 — Query the warehouse through chat
 
 Ask the model things that require multi-step tool use:
 
@@ -79,28 +80,32 @@ Ask the model things that require multi-step tool use:
   around it."*
 
 Watch the tool-call panel in LibreChat: you'll see the model list tables,
-describe schemas, and iterate on SQL — the same workflow a human analyst
-follows.
+describe schemas, and revise SQL. Inspect the queries and their results.
 
-## Exercises
+## 4.5 — Extend and review the tools
 
-1. **Add a tool** `list_channels()` that returns distinct channel names and
-   their sample counts. Restart the server and see the model start using it.
-2. **Add an anomaly tool.** The `labels` and `anomaly_types` tables and the
-   `labeled_readings` view are already in the warehouse (Step 2). Add an
-   `anomalies_for(channel)` tool that returns a channel's anomaly windows and
-   their categories, so the model reaches for it directly instead of writing
-   the join each time. Then ask the model to *investigate* an anomaly: what did
-   the channel do in the hour around it?
-3. **Break it on purpose.** Remove the read-only check from `query` and ask
-   the model to clean up the warehouse. (Kidding. Don't. But do read the
-   check and think about what else a production server would need: row-level
-   auth, query timeouts, cost caps.)
+### 4.5.1 — Add a channel-list tool
 
-## Where to go from here
+Add a `list_channels()` tool that returns distinct channel names and their
+sample counts. Restart the server and check how the model uses it.
+
+### 4.5.2 — Add an anomaly-window tool
+
+The `labels` and `anomaly_types` tables and the `labeled_readings` view are
+already in the warehouse (Step 2). Add an `anomalies_for(channel)` tool that
+returns a channel's anomaly windows and their categories, so the model can
+call it instead of writing the join each time. Then ask the model to investigate
+an anomaly: what did the channel do in the hour around it?
+
+### 4.5.3 — Review the query restrictions
+
+Read the read-only check in `query` and consider what else a production server
+would need, such as row-level authorization, query timeouts, and cost caps.
+
+## 4.6 — Additional MCP uses (optional)
 
 - Point the MCP server at your own mission's data lake.
 - Add MCP **resources** (read-only context like schema docs) and **prompts**
-  (canned analysis workflows) — FastMCP supports both.
+  (reusable analysis workflows). FastMCP supports both.
 - Run the same server against Claude Desktop, Claude Code, or any other MCP
-  client — that's the point of a protocol.
+  client.

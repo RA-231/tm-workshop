@@ -1,34 +1,31 @@
 # The scanner's QR decoder
 
-`creds/jsQR.js` is **not in this repo**. It is [jsQR](https://github.com/cozmo/jsQR)
-**1.4.0**, Apache-2.0, pinned as a dependency in `site/package.json` and copied
+The scanner uses [jsQR](https://github.com/cozmo/jsQR) **1.4.0**, licensed under
+Apache-2.0. It is pinned in `site/package.json` and copied
 out of `node_modules` into the published site by `site/Dockerfile` at build time.
-`creds/jsQR.LICENSE` comes along with it, because Apache-2.0 requires the licence
-to travel with redistributed code and the built image redistributes it.
+The build also copies its licence to `creds/jsQR.LICENSE` for redistribution.
 
 Both files appear when you run `task up:docs`, and both are gitignored.
 
-## Why a dependency rather than a committed copy
+## Dependency and delivery
 
-It used to be committed — a 250KB minified blob, pinned by a hash written into
-this file by hand. The dependency is better on every axis that matters:
+The decoder is installed as a dependency rather than committed as a minified
+bundle:
 
-- **npm verifies it.** `package-lock.json` carries
+- **Integrity verification.** `package-lock.json` records
   `sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==`
-  and checks it on every install. A vendored file is only as trustworthy as the
-  person who last looked at it.
-- **The build was never offline anyway.** `site/Dockerfile` runs `npm install`
-  for Astro, so vendoring one file while fetching hundreds bought nothing.
-- **Nothing to review in a diff.** Minified bundles are unreadable in review;
-  a version bump in a lockfile is not.
+  for npm to verify during installation.
+- **Build dependencies.** `site/Dockerfile` already runs `npm install` for
+  Astro and the other site dependencies.
+- **Reviewable updates.** Dependency updates appear as version and lockfile
+  changes rather than minified bundle diffs.
 
-The property that *is* worth keeping is that the **page** makes no network
-requests once built: the decoder is served from the same origin as the page, not
-from a CDN at run time. A conference network should never sit between an
-attendee and the code that reads their credential. That still holds — the fetch
-happens at build, on your machine, not in their browser.
+The built site serves the decoder from the same origin as the scanner page.
+The browser decodes credentials locally and does not fetch code from a CDN
+or send credentials over the network. The dependency download happens during
+the site build.
 
-## Verifying it, if you want to
+## Verify the decoder
 
 ```bash
 docker compose exec docs sha256sum /usr/share/nginx/html/creds/jsQR.js

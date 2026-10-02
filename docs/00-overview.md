@@ -1,9 +1,13 @@
-# Step 0 — The Big Picture
+# Step 0 — Overview
 
-Welcome! Over the next three hours we're going to build a small but real
-telemetry platform out of open source parts, then teach an LLM to use it.
+In this three-hour workshop, we'll build a telemetry platform using open source
+tools, then connect an LLM to it for analysis.
 
-## What we're building
+Sections use the format **step.section**; actions within a section add a third
+number. If you need help, give the number and name, such as **1.4.2 — Prepare
+the telemetry files**, along with the command or screen and any error message.
+
+## 0.1 — Workshop architecture
 
 ```
                     ┌──────────────────────────────────────────────────────────┐
@@ -35,51 +39,115 @@ telemetry platform out of open source parts, then teach an LLM to use it.
                                      the model provider
 ```
 
-## The three acts
+## 0.2 — Workshop sequence
 
-**Act 1 — Ingesting data with Flink (Step 1).**
+**Ingesting data with Flink (Step 1).**
 Apache Flink reads the telemetry files and writes them into **Apache
-Iceberg** — an open table format that turns a pile of Parquet files in object
-storage into a real table with schema, snapshots, and time travel. The files
+Iceberg**, an open table format that manages Parquet files in object storage
+with a schema, snapshots, and time travel. The files
 live in **Garage**, a lightweight S3-compatible object store, and **Apache
-Polaris** is the catalog: the service that answers "what tables exist and where
-is their current metadata?"
+Polaris** is the catalog: it tracks tables and the location of their current
+metadata.
 
-**Act 2 — Querying data with Trino (Step 2).**
+**Querying data with Trino (Step 2).**
 **Trino** is a distributed SQL engine that reads Iceberg natively. Anything
-that speaks SQL can now analyze the telemetry — we'll use **Apache Superset**
-to build charts, and we'll peek at Trino's query planner to understand how
+that connects to Trino can analyze the telemetry. We'll use **Apache Superset**
+to build charts and inspect Trino's query planner to understand how
 Iceberg's metadata makes queries fast (partition pruning, file skipping).
 
-**Act 3 — Interacting with Trino using MCP (Steps 3–4).**
-The **Model Context Protocol (MCP)** is how we hand tools to an LLM. We'll run
-**LibreChat** as the chat UI, route model calls through **LiteLLM** to AWS
-the gateway, and then build our own MCP server with **FastMCP** that lets the model
-explore and query the telemetry warehouse — "which channel had the most
-anomalous March?" becomes a conversation instead of a SQL session.
+**Analyzing data with MCP tools (Steps 3–5).**
+The **Model Context Protocol (MCP)** exposes tools to an LLM client. We'll run
+**LibreChat** as the chat UI, route model calls through **LiteLLM** to the model
+provider, and build an MCP server with **FastMCP** for querying the warehouse.
+In Step 5, we'll combine query, anomaly-detection, and charting tools in an agent.
 
-## The dataset
+## 0.3 — The ESA dataset
 
 We're using the [ESA Anomaly Dataset (ESA-ADB)](https://zenodo.org/records/15237121):
-real, curated telemetry from three ESA missions, published in 2024 to give the
-anomaly-detection community something better than synthetic benchmarks. It's
-224 channels of multi-year time series with labeled anomalies — exactly the
-shape of data a real mission ops team works with.
+curated telemetry from three ESA missions, published in 2024 for anomaly-detection
+research. It contains 224 channels of multi-year time series with labeled
+anomalies.
 
 The full download is ~11.6 GB (three mission archives). For the workshop we
 use a ~150 MB subset — Mission1's metadata plus seven channels, pulled
-straight out of the archive with HTTP range requests (see
-`task data:download`). Same schema, less waiting on conference Wi-Fi; every
-step also works against a full mission if you re-run it at home
+from the archive with HTTP range requests (see `task data:download`). The subset
+uses the same schema as the full dataset. You can also run each step against a
+full mission at home
 (`task data:download -- medium`).
 
-## Ground rules
+## 0.4 — Set up your laptop
 
-- Everything runs in Docker Compose. `task up` and go.
-- No authentication anywhere it can be avoided. This is a workshop, not prod.
-- If you fall behind on the ingest, you don't have to wait for it:
-  `task checkpoint:restore -- <name>` drops in a pre-built warehouse (the
-  Iceberg files *and* the Polaris catalog), so you can jump straight to
-  querying. Your instructor will point you at the checkpoint names.
+### 0.4.1 — Check prerequisites
+
+You need Docker with Compose v2, [Task](https://taskfile.dev), about 8 GB of RAM
+available to Docker, and a few GB of free disk space. Steps 3–5 also need the
+workshop model key handed out by your instructor.
+
+### 0.4.2 — Create the local configuration
+
+From the repository directory, run:
+
+```bash
+task setup            # creates .env from the template + local data dirs
+```
+
+### 0.4.3 — Download the workshop dataset
+
+On the conference network, set `DATA_MIRROR=<url>` in `.env` using the URL from
+your instructor. Then run:
+
+```bash
+task data:download    # ~150 MB workshop subset of the ESA dataset
+```
+
+### 0.4.4 — Open the workshop guide
+
+```bash
+task up:docs          # service links + these docs at :4321
+```
+
+Open [http://localhost:4321](http://localhost:4321). The service links become
+available as you start each step's services.
+
+## 0.5 — Running services and restoring a checkpoint
+
+- `task up` starts the services in Docker Compose.
+- The stack uses simplified authentication for local workshop use.
+- To skip the ingest, use `task checkpoint:restore -- <name>` to restore a
+  pre-built warehouse, including the Iceberg files and the Polaris catalog.
+  Your instructor will provide the checkpoint names.
+
+## 0.6 — Resolve a host-port conflict
+
+### 0.6.1 — Find the container using the port
+
+If Docker reports `port is already allocated`, another process or container
+already uses that port. List the running containers and their published ports:
+
+```bash
+docker ps --format 'table {{.Names}}\t{{.Ports}}'
+```
+
+### 0.6.2 — Stop the older workshop stack
+
+An older copy of the workshop may occupy several ports, including `4321` for
+the guide. If you no longer need that copy, run `task down` from its repository
+directory, then retry `task up` here. `task down` preserves the data volumes.
+
+If the older stack was started with a custom Compose project name (`-p`), use
+that same name when stopping it. For example, from the older repository:
+
+```bash
+docker compose -p tm-workshop-upgrade down
+```
+
+### 0.6.3 — Restore a missing port binding
+
+If a container starts after the conflict is resolved but its host port is still
+missing from `docker compose ps`, recreate that service. For the guide:
+
+```bash
+docker compose up -d --force-recreate docs
+```
 
 Next: [Step 1 — Ingesting data into Iceberg](01-ingest.md)

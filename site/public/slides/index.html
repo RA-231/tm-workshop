@@ -292,12 +292,12 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
     <path d="M100 58v-18M100 142v18M58 100H40M142 100h18" stroke="#5d6c8c" stroke-width="1"/>
   </svg>
   <h1>Space Telemetry,<br/>End to End</h1>
-  <p class="sub">Process, store, query, and <em>talk to</em> satellite telemetry
-     using nothing but open source — and a laptop.</p>
+  <p class="sub">Process, store, query, and analyse satellite telemetry
+     with open source tools on your laptop.</p>
   <div class="meta">SPACE SUMMIT 2026 &nbsp;·&nbsp; 3 HOURS &nbsp;·&nbsp; 6 STEPS &nbsp;·&nbsp; ALL IN DOCKER</div>
   <aside class="notes">
-    <b>Open with the ending.</b> Don't start with architecture — start by saying what they
-    walk out with: an agent that finds a real, labelled ESA anomaly nobody told it about.
+    <b>Introduce the goal:</b> build an agent that investigates ESA telemetry and
+    compares its findings with labelled anomalies.
     <br/><b>Housekeeping:</b> Docker running? ~8&nbsp;GB RAM free? Wi-Fi + the mirror URL.
     Hand out the key cards now so they're in .env before the break.
     <br/>Press <b>?</b> any time for deck keys. <b>n</b> = these notes, <b>p</b> = presenter window.
@@ -305,7 +305,7 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
 </section>
 
 <section class="slide" data-title="Your presenters">
-  <div class="chip">Who's up here</div>
+  <div class="chip">Introductions</div>
   <h2>Your presenters</h2>
   <div class="cols" style="margin-top:4px">
     <div class="card cyan bio">
@@ -337,20 +337,18 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
       <p class="email">jonathan.morton@ra231.com</p>
     </div>
   </div>
-  <p class="kicker">Grab either of us in the break — or just shout. <b>Questions are welcome at any point.</b></p>
+  <p class="kicker"><b>Questions are welcome at any point.</b> You can also talk with us during the break.</p>
   <aside class="notes">
-    Keep this to <b>30 seconds each</b>. The credibility that matters here isn't the CV, it's that
-    the room is about to run the thing on their own laptops.
+    Allow <b>30 seconds each</b> for introductions, then move to the workshop goals.
   </aside>
 </section>
 
 <section class="slide" data-title="Where this comes from">
   <div class="chip">Provenance</div>
-  <h2>This isn't a workshop invention</h2>
-  <p class="lead">What you'll build today is <b>years of hard-won lessons</b> in designing
-     software systems for telemetry analysis — <em>operationally and for research</em> —
-     compressed into three hours.</p>
-  <p>Concretely: the telemetry database is based on <b>MODM</b>, a real mission data model.</p>
+  <h2>Based on mission telemetry systems</h2>
+  <p class="lead">The workshop draws on experience designing telemetry analysis
+     systems for <em>operations and research</em>.</p>
+  <p>The telemetry database is based on <b>MODM</b>, a mission data model.</p>
   <div class="cols" style="margin-top:2px">
     <div class="card cyan">
       <h3 style="color:var(--cyan)">Built for TESS</h3>
@@ -363,15 +361,13 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
         <b>Commercial Lunar Payload Services</b> missions at JSC.</p>
     </div>
   </div>
-  <p class="kicker">Same data model, same lakehouse shape — <b>containerised so it fits on a
-     laptop in three hours.</b> The scale is the toy part. The design isn't.</p>
+  <p class="kicker">The workshop uses this data model in a lakehouse
+     <b>configured to run on a laptop.</b></p>
   <aside class="notes">
-    This is where the room decides whether to take the next three hours seriously. Say plainly:
-    the ESA dataset is a stand-in, but <b>the shape of the warehouse is the one running on real
-    missions</b> — that's why we're teaching this stack and not a tutorial stack.
-    <br/>Worth naming the dual audience out loud — these systems have to serve <b>ops</b> (someone
-    on console, right now) and <b>research</b> (someone re-deriving a result in five years). Most
-    of the design decisions in this workshop come from that tension.
+    Explain how the warehouse design relates to mission systems. The ESA dataset
+    provides the workshop input.
+    <br/>Describe the needs of <b>operations</b> (analysing current telemetry) and
+    <b>research</b> (reproducing a result years later), and how both influenced the design.
   </aside>
 </section>
 
@@ -380,14 +376,13 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
   <p class="lead">You'll ask a chat window:</p>
   <div class="ask">"Investigate channel_41 for anomalies. Work from the signal —
      don't look at the labels until you've committed. Then chart it."</div>
-  <p class="lead">…and an agent will explore a lakehouse, score six detectors,
-     find a <b>7.6-hour stuck value</b> that no threshold would catch, build the chart,
-     and <em>grade itself</em> against the answer key.</p>
+  <p class="lead">The agent will query the lakehouse, run six detectors,
+     investigate a <b>7.6-hour stuck value</b>, create a chart,
+     and compare its findings with the labels.</p>
   <p class="kicker">Everything under it — the storage, the SQL engine, the tools — you build today.</p>
   <aside class="notes">
-    This is the money slide. Say it with confidence, then promise: <b>no magic, no SaaS</b>.
-    If anyone asks "is this a demo or does it really work?" — it really works, and we'll
-    watch it get one wrong at some point too. That's part of the lesson.
+    Describe the investigation attendees will run in Step 5. Explain that they
+    will inspect the tool calls and check the findings, including any errors.
   </aside>
 </section>
 
@@ -395,29 +390,31 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
   <h2>The plan</h2>
   <table>
     <tr><th style="width:90px">Step</th><th>What you do</th><th style="width:250px">Tools</th></tr>
-    <tr><td><b>0</b></td><td>The big picture + the dataset</td><td class="dim">—</td></tr>
+    <tr><td><b>0</b></td><td>Architecture + the dataset</td><td class="dim">—</td></tr>
     <tr><td><b>1</b></td><td>Ingest telemetry into a table format</td><td class="dim">Flink · Iceberg · Polaris · Garage</td></tr>
     <tr><td><b>2</b></td><td>Query it, then chart it</td><td class="dim">Trino · Superset</td></tr>
     <tr><td>☕</td><td class="dim"><i>break</i></td><td></td></tr>
     <tr><td><b>3</b></td><td>Put a model in front of it</td><td class="dim">LibreChat · LiteLLM · model gateway</td></tr>
     <tr><td><b>4</b></td><td>Give the model tools</td><td class="dim">MCP · FastMCP</td></tr>
-    <tr><td><b>5</b></td><td>Compose it all into an agent</td><td class="dim">3 MCP servers · one conversation</td></tr>
+    <tr><td><b>5</b></td><td>Configure an analysis agent</td><td class="dim">3 MCP servers · one conversation</td></tr>
   </table>
-  <p class="kicker">Each step is a doc at <b>localhost:4321</b> with the exact commands. Slides are the map; the docs are the terrain.</p>
+  <p class="kicker">The guide at <b>localhost:4321</b> numbers sections and actions.
+     When asking for help, give the number, name, and error message.</p>
   <aside class="notes">
     Rough timing: 0 = 10 min, 1 = 35, 2 = 40, break = 15, 3 = 20, 4 = 35, 5 = 40.
     <b>Say out loud:</b> if you fall behind on the ingest you can restore a checkpoint and
-    skip straight ahead — nobody gets stranded.
+    continue with the query step.
   </aside>
 </section>
 
 <section class="slide" data-title="Setup">
-  <h2>Before anything else</h2>
+  <div class="chip">0.4 — Set up your laptop</div>
+  <h2>Set up your laptop</h2>
   <div class="cols wide-left">
     <div>
-      <pre>task setup            <span class="c"># .env + data dirs</span>
-task data:download    <span class="c"># ~150 MB subset</span>
-task up:docs          <span class="c"># the front door</span></pre>
+      <pre>task setup            <span class="c"># 0.4.2 — .env + data dirs</span>
+task data:download    <span class="c"># 0.4.3 — ~150 MB subset</span>
+task up:docs          <span class="c"># 0.4.4 — docs + service links</span></pre>
       <p class="lead">Then open <b>http://localhost:4321</b> — every service link
          and every step's doc lives there.</p>
     </div>
@@ -430,7 +427,7 @@ task up:docs          <span class="c"># the front door</span></pre>
         <li>The workshop key card (Steps 3–5)</li>
       </ul>
       <p class="small dim">On the conference network set <code>DATA_MIRROR</code> in
-        <code>.env</code> — pull from the room, not Zenodo.</p>
+        <code>.env</code> to use the local dataset mirror.</p>
     </div>
   </div>
   <p class="kicker"><code>task --list</code> shows every command. <b>task up</b> starts the whole stack at once.</p>
@@ -440,36 +437,37 @@ task up:docs          <span class="c"># the front door</span></pre>
   </aside>
 </section>
 
-<section class="slide" data-title="Ground rules">
-  <h2>Ground rules</h2>
+<section class="slide" data-title="Running the workshop">
+  <div class="chip">0.5 — Services and checkpoints</div>
+  <h2>Running the workshop</h2>
   <div class="cols-3">
-    <div class="card"><h3>🐳 Everything is Docker</h3><p class="dim"><code>task up</code> and go. Nothing installs on your laptop but Task.</p></div>
-    <div class="card"><h3>🔓 No auth anywhere</h3><p class="dim">This is a workshop, not production. Every skipped guard is called out when it matters.</p></div>
-    <div class="card"><h3>⏭️ Nobody gets stuck</h3><p class="dim"><code>task checkpoint:restore -- &lt;name&gt;</code> drops in a pre-built warehouse. Ask for the name.</p></div>
+    <div class="card"><h3>Docker Compose</h3><p class="dim"><code>task up</code> starts the services in containers.</p></div>
+    <div class="card"><h3>Local configuration</h3><p class="dim">Authentication is simplified for workshop use.</p></div>
+    <div class="card"><h3>Restore a checkpoint</h3><p class="dim"><code>task checkpoint:restore -- &lt;name&gt;</code> restores a pre-built warehouse. Ask for the name.</p></div>
   </div>
   <div class="callout" style="margin-top:28px">
-    <p>Ask questions <b>the moment</b> something doesn't make sense. Everything here is
-       one layer on top of the last — a gap early gets expensive fast.</p>
+    <p>Ask questions as you go. Each step uses the services and data
+       from the previous steps.</p>
   </div>
   <aside class="notes">
-    The checkpoint escape hatch matters more than it sounds: it restores the Garage volumes
+    A checkpoint restores the Garage volumes
     <b>and</b> the Polaris Postgres volume together, so the catalog and files agree. Mention
     it again at the end of Step 1.
   </aside>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
-     STEP 0 — THE BIG PICTURE
+     STEP 0 — OVERVIEW
      ═══════════════════════════════════════════════════════════════════ -->
 
 <section class="slide center" data-title="Step 0 · Overview">
   <div class="chip">Step 0</div>
-  <h1>The big picture</h1>
+  <h1>Overview</h1>
   <p class="lead dim">What we're building, and the data we're building it on.</p>
 </section>
 
-<section class="slide" data-title="Step 0 · Overview">
-  <div class="chip">Step 0 · Architecture</div>
+<section class="slide" data-title="0.1 — Workshop architecture">
+  <div class="chip">0.1 — Workshop architecture</div>
   <h2>One stack, five layers</h2>
   <svg viewBox="0 0 1140 470" width="1140" height="470" style="margin-top:-6px">
     <defs>
@@ -529,49 +527,47 @@ task up:docs          <span class="c"># the front door</span></pre>
   <aside class="notes">
     Trace it with your finger in this order: files → Flink → <b>two</b> destinations (data to
     Garage, pointer to Polaris) → Trino asks Polaris where the data is → everyone else talks SQL
-    to Trino. <b>The single idea:</b> the writer and every reader meet at the catalog, and
-    nowhere else.
+    to Trino. Explain how Flink and Trino use the same catalog to locate the current
+    table metadata.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 0 · Overview">
-  <div class="chip">Step 0 · The arc</div>
-  <h2>Three acts</h2>
+<section class="slide" data-title="0.2 — Workshop sequence">
+  <div class="chip">0.2 — Workshop sequence</div>
+  <h2>Ingest, query, analyse</h2>
   <div class="cols-3" style="margin-top:6px">
     <div class="card cyan">
-      <h3 style="color:var(--cyan)">Act 1 · Store</h3>
-      <p class="dim">Flink writes telemetry into <b>Iceberg</b> — a pile of Parquet in object
-        storage that behaves like a real table: schema, snapshots, time travel.</p>
+      <h3 style="color:var(--cyan)">Ingest</h3>
+      <p class="dim">Flink writes telemetry into <b>Iceberg</b> tables with a schema,
+        snapshots, and time travel, backed by files in object storage.</p>
       <p class="small dim">Steps 1</p>
     </div>
     <div class="card teal">
-      <h3 style="color:var(--teal)">Act 2 · Query</h3>
-      <p class="dim">Trino reads that same table natively. Anything that speaks SQL can now
-        analyse the mission — including <b>Superset</b>.</p>
+      <h3 style="color:var(--teal)">Query</h3>
+      <p class="dim">Trino reads the same tables. SQL clients, including
+        <b>Superset</b>, can query the telemetry through Trino.</p>
       <p class="small dim">Step 2</p>
     </div>
     <div class="card amber">
-      <h3 style="color:var(--amber)">Act 3 · Converse</h3>
-      <p class="dim">MCP hands the warehouse to a model as <b>tools</b>. "Which channel had the
-        most anomalous March?" stops being a SQL session.</p>
+      <h3 style="color:var(--amber)">Analyse</h3>
+      <p class="dim">MCP exposes query and analysis <b>tools</b> to the model,
+        so you can ask questions about the telemetry in chat.</p>
       <p class="small dim">Steps 3–5</p>
     </div>
   </div>
   <div class="callout" style="margin-top:30px">
-    <p>Each act is useful on its own. That's the point — every layer here is
-       something you'd deploy independently.</p>
+    <p>You can use the storage, query, and analysis services independently.</p>
   </div>
 </section>
 
-<section class="slide" data-title="Step 0 · The dataset">
-  <div class="chip">Step 0 · The data</div>
+<section class="slide" data-title="0.3 — The ESA dataset">
+  <div class="chip">0.3 — The ESA dataset</div>
   <h2>The ESA Anomaly Dataset</h2>
   <div class="cols wide-left">
     <div>
-      <p>Real, curated telemetry from <b>three ESA missions</b>, published in 2024 to give the
-         anomaly-detection community something better than synthetic benchmarks.</p>
-      <p>Multi-year time series with <b>expert-labelled anomalies</b> — exactly the shape of data
-         a mission ops team actually stares at.</p>
+      <p>Curated telemetry from <b>three ESA missions</b>, published in 2024
+         for anomaly-detection research.</p>
+      <p>Multi-year time series with <b>expert-labelled anomalies</b>.</p>
       <p class="small dim">© ESA, CC BY 3.0 IGO · arXiv:2406.17826 · zenodo.org/records/15237121</p>
     </div>
     <div>
@@ -588,14 +584,14 @@ task data:download -- full    <span class="c"># everything</span></pre>
   </div>
   <p class="kicker">Same schema at every size — the subset is pulled out of the archive with <b>HTTP range requests</b>. Less waiting on conference Wi-Fi.</p>
   <aside class="notes">
-    Worth a beat: the small subset isn't a toy copy, it's the same files sliced out of the same
-    archive. Everything you do today works at home against a full mission by re-running one command.
+    Explain that the subset contains files from the full archive and uses the same
+    schema. Attendees can also run the workshop with a full mission download.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 0 · The data">
-  <div class="chip">Step 0 · The data</div>
-  <h2>What the signal actually looks like</h2>
+<section class="slide" data-title="0.3 — The ESA dataset">
+  <div class="chip">0.3 — The ESA dataset</div>
+  <h2>The telemetry signal</h2>
   <div class="cols wide-right">
     <div>
       <p>It's <b>anonymised and quantised</b> — values are normalised, names are
@@ -618,12 +614,10 @@ task data:download -- full    <span class="c"># everything</span></pre>
       </svg>
     </div>
   </div>
-  <p class="kicker">This drawing <b>is</b> the labelled March-2000 anomaly on channel_41. Remember it — we come back to it in Step 5.</p>
+  <p class="kicker">This drawing illustrates the labelled March-2000 anomaly on channel_41. We'll investigate it in Step 5.</p>
   <aside class="notes">
-    Plant the seed now and it pays off two hours later. The value 0.64 is <b>well inside</b> the
-    channel's normal range, so "alert if value &lt; X" sees nothing. What's abnormal is that it
-    went to a level it rarely visits and <b>stayed</b>. Humans spot this instantly on a chart;
-    thresholds never do.
+    The value 0.64 is inside the channel's normal range, so a range threshold would
+    not identify it. Explain that the unusual feature is the long dwell at that level.
   </aside>
 </section>
 
@@ -638,9 +632,9 @@ task data:download -- full    <span class="c"># everything</span></pre>
      On the way: what a table format <em>is</em>, and why the catalog matters.</p>
 </section>
 
-<section class="slide" data-title="Step 1 · Ingest" data-accent="ingest">
-  <div class="chip">Step 1 · Iceberg</div>
-  <h2>Iceberg is a spec for <span class="thin">keeping track of files</span></h2>
+<section class="slide" data-title="1.1 — Iceberg table layout" data-accent="ingest">
+  <div class="chip">1.1 — Iceberg table layout</div>
+  <h2>How Iceberg tracks <span class="thin">files and metadata</span></h2>
   <div class="cols wide-left">
     <div>
       <pre class="sm">s3://warehouse/esa_adb/readings/
@@ -666,73 +660,69 @@ task data:download -- full    <span class="c"># everything</span></pre>
     </div>
   </div>
   <aside class="notes">
-    Resist the urge to call it a database. It's a <b>convention</b> that several engines agree
-    on. Everything magical about Iceberg falls out of "the current state of a table is one file
-    path, and changing it is atomic."
+    Explain how an engine follows table metadata to find data files, and how an
+    atomic metadata update commits a new table state.
   </aside>
 </section>
 
-<section class="slide center" data-title="Step 1 · Ingest" data-accent="ingest">
-  <div class="chip">Step 1 · Iceberg</div>
-  <h2>Two consequences worth pausing on</h2>
+<section class="slide center" data-title="1.1 — Iceberg table layout" data-accent="ingest">
+  <div class="chip">1.1 — Iceberg table layout</div>
+  <h2>Snapshots and coordinated commits</h2>
   <div class="cols" style="margin-top:10px">
     <div class="card cyan">
-      <h3>1 · Snapshots are free history</h3>
-      <p class="dim">Old metadata still describes the old file set. Nothing was overwritten —
-        so <b>time travel</b> and <b>rollback</b> aren't features anyone had to build. They're
-        what's left over.</p>
+      <h3>1 · Snapshots retain history</h3>
+      <p class="dim">Retained snapshots describe earlier versions of the table,
+        supporting <b>time travel</b> and <b>rollback</b>.</p>
     </div>
     <div class="card amber">
-      <h3>2 · Somebody has to own the pointer</h3>
+      <h3>2 · The catalog manages commits</h3>
       <p class="dim">An atomic swap needs one coordinator every writer and reader agrees on.
         Object storage alone can't do it.</p>
       <p><b>That coordinator is the catalog.</b></p>
     </div>
   </div>
-  <p class="kicker">Everything in the next three slides follows from consequence #2.</p>
+  <p class="kicker">Next, we'll use Polaris to manage the catalog.</p>
 </section>
 
-<section class="slide" data-title="Step 1 · Polaris" data-accent="ingest">
-  <div class="chip">Step 1 · Catalog</div>
+<section class="slide" data-title="1.2 — The Polaris catalog" data-accent="ingest">
+  <div class="chip">1.2 — The Polaris catalog</div>
   <h2>Apache Polaris</h2>
-  <p class="lead">An implementation of the <b>Iceberg REST catalog</b> protocol. Small service,
-     critical job:</p>
+  <p class="lead">An implementation of the <b>Iceberg REST catalog</b> protocol.
+     It tracks metadata locations and coordinates commits:</p>
   <pre class="sm" style="border-left-color:var(--violet)">esa_adb.readings  →  "current metadata is v3.metadata.json"
-                  →  <b>and I perform the atomic swap on commit</b></pre>
+                  →  <b>atomic metadata update on commit</b></pre>
   <div class="cols" style="margin-top:6px">
     <div>
-      <p>Flink (the writer) and Trino (the reader, in 15 minutes) both speak the REST protocol
-         to the <em>same</em> Polaris. So they agree on what the table is at every moment —
-         two engines, <b>zero coordination</b> between them.</p>
-      <p class="small dim" style="margin-top:-4px">That handoff is the whole reason lakehouse
-        architectures work.</p>
+      <p>Flink and Trino use the REST protocol to access the <em>same</em> Polaris
+         catalog. Both engines use the table metadata it provides.</p>
+      <p class="small dim" style="margin-top:-4px">They do not need to communicate
+        directly; Polaris coordinates access to the table.</p>
     </div>
     <div class="card">
       <h3>What we skipped</h3>
       <p class="dim">In production Polaris also does access control and vends <b>scoped,
         temporary</b> storage credentials per engine.</p>
-      <p class="dim">We give every engine the same static Garage key. One less moving part —
-        but it's real S3 object storage, exactly like a cloud deployment.</p>
+      <p class="dim">For the workshop, every engine uses the same static key
+        for the local Garage object store.</p>
     </div>
   </div>
   <aside class="notes">
-    If someone asks "why not just Hive Metastore / a file in S3?" — file-based catalogs can't do
-    the atomic swap safely across engines on plain S3, and Hive drags a Thrift service + RDBMS
-    with a much worse API. REST catalog is where the ecosystem converged.
+    If asked about catalog alternatives, explain that we chose Polaris because
+    both engines support the Iceberg REST catalog protocol.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 1 · Flink" data-accent="ingest">
-  <div class="chip">Step 1 · Flink</div>
+<section class="slide" data-title="1.3 — Flink ingestion" data-accent="ingest">
+  <div class="chip">1.3 — Flink ingestion</div>
   <h2>Why Flink for a batch load?</h2>
   <div class="cols wide-left">
     <div>
-      <p>Because it isn't one. Our job <em>streams</em> rows into Iceberg: the sink commits a
+      <p>Our job processes a finite set of files in <em>streaming mode</em>: the sink commits a
          new snapshot <b>at every checkpoint</b>, so the table grows in visible increments while
          the job runs.</p>
       <p>The file source is <b>bounded</b> — once every file is read, the job ends by itself.</p>
-      <div class="callout"><p>Point the same SQL at a live feed and it simply never ends.
-        <b>Batch is streaming over a finite source.</b></p></div>
+      <div class="callout"><p>A live source could run continuously.
+        This file source finishes when all input has been read.</p></div>
     </div>
     <div class="card cyan">
       <h3>One prep step first</h3>
@@ -747,27 +737,27 @@ task data:download -- full    <span class="c"># everything</span></pre>
       </ul>
     </div>
   </div>
-  <p class="kicker">Those three tables are what make Step 2's views and Step 5's investigation possible.</p>
+  <p class="kicker">Step 2's views and Step 5's investigation use these metadata tables.</p>
 </section>
 
-<section class="slide" data-title="Step 1 · Do it" data-accent="ingest">
-  <div class="chip">Step 1 · Do it</div>
+<section class="slide" data-title="1.4 — Run the ingest" data-accent="ingest">
+  <div class="chip">1.4 — Run the ingest</div>
   <h2>Run the ingest</h2>
-  <pre>task up:ingest        <span class="c"># garage, polaris, flink — and init the S3 bucket</span>
-task data:prepare     <span class="c"># pickled channels -> JSON</span>
-task catalog:create   <span class="c"># create the 'workshop' catalog in Polaris</span>
-task flink:job        <span class="c"># run the ingest — blocks until loaded</span></pre>
+  <pre>task up:ingest        <span class="c"># 1.4.1 — start ingestion services</span>
+task data:prepare     <span class="c"># 1.4.2 — prepare telemetry files</span>
+task catalog:create   <span class="c"># 1.4.3 — create Polaris catalog</span>
+task flink:job        <span class="c"># 1.4.4 — load Iceberg tables</span></pre>
   <div class="cols" style="margin-top:4px">
     <div class="card cyan">
-      <h3>Watch it happen</h3>
+      <h3>1.4.5 · Inspect the job</h3>
       <p class="dim"><b>Flink UI</b> → localhost:8081 — the job reading files and writing the
         sink, one snapshot per checkpoint.</p>
       <pre class="xs" style="margin:10px 0 0">docker compose exec garage \
   /garage bucket info warehouse</pre>
-      <p class="small dim" style="margin-top:10px">The metadata and Parquet objects, in plain sight.</p>
+      <p class="small dim" style="margin-top:10px">Inspect the warehouse bucket's metadata and Parquet objects.</p>
     </div>
     <div class="card">
-      <h3>Read the job — it's ~40 lines</h3>
+      <h3>1.5 · Inspect the ingest SQL</h3>
       <p class="dim"><code>flink/sql/ingest.sql</code>:</p>
       <ul class="tight">
         <li>one statement defines the prepared JSON as a table</li>
@@ -777,23 +767,21 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
     </div>
   </div>
   <aside class="notes">
-    While it runs is your best window for questions — use it. Put the Flink UI on the projector
-    and let them watch the record count climb. Call out a checkpoint landing = a new Iceberg
-    snapshot they'll query by ID in ten minutes.
+    Show the Flink UI while the job runs and take questions. Point out that each
+    checkpoint commits an Iceberg snapshot that attendees can query in Step 2.
   </aside>
 </section>
 
-<section class="slide center" data-title="Step 1 · Checkpoint" data-accent="ingest">
-  <div class="chip">Step 1 · Checkpoint</div>
-  <h2>Everybody loaded?</h2>
+<section class="slide center" data-title="1.6 — Verify or restore the load" data-accent="ingest">
+  <div class="chip">1.6 — Verify or restore the load</div>
+  <h2>1.6.1 — Check the row count</h2>
   <pre style="font-size:24px">task rowcount</pre>
   <div class="callout">
-    <p>Behind, or don't want to wait? <b>task checkpoint:restore -- &lt;name&gt;</b> drops in a
-       pre-built warehouse — the Iceberg files <em>and</em> the Polaris catalog that points at
-       them — and you're querying immediately.</p>
+    <p>To skip the ingest, use <b>task checkpoint:restore -- &lt;name&gt;</b> to restore
+       a pre-built warehouse, including the Iceberg files and the Polaris catalog.</p>
   </div>
-  <p class="kicker">You now have a real table in real object storage, written by one engine and
-     owned by a catalog. Next: someone else reads it.</p>
+  <p class="kicker">Flink has written the table to object storage and registered it
+     in Polaris. Next, we'll query it with Trino.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
@@ -803,12 +791,12 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
 <section class="slide center" data-title="Step 2 · Query" data-accent="query">
   <div class="chip">Step 2</div>
   <h1>Query</h1>
-  <p class="lead dim">The payoff for choosing an open table format:<br/><em>any</em> engine can read it.</p>
+  <p class="lead dim">Query the tables Flink wrote<br/>with Trino and Superset.</p>
 </section>
 
-<section class="slide" data-title="Step 2 · Trino" data-accent="query">
-  <div class="chip">Step 2 · Trino</div>
-  <h2>Trino in one minute</h2>
+<section class="slide" data-title="2.1 — Query with Trino" data-accent="query">
+  <div class="chip">2.1 — Query with Trino</div>
+  <h2>Querying with Trino</h2>
   <div class="cols wide-left">
     <div>
       <p>A distributed SQL engine that <b>owns no storage</b>. You give it <em>catalogs</em>
@@ -834,9 +822,9 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
   </div>
 </section>
 
-<section class="slide" data-title="Step 2 · The planner" data-accent="query">
-  <div class="chip">Step 2 · The planner</div>
-  <h2>How the planner exploits Iceberg</h2>
+<section class="slide" data-title="2.2.1 — Compare query filters" data-accent="query">
+  <div class="chip">2.2.1 — Compare query filters</div>
+  <h2>How the planner uses Iceberg metadata</h2>
   <div class="cols wide-left">
     <div>
       <pre class="sql sm"><span class="k">EXPLAIN</span>
@@ -848,7 +836,7 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
          <b>prunes partitions</b> and <b>skips files</b> before touching a byte of Parquet.</p>
     </div>
     <div class="card teal">
-      <h3>Try it for real</h3>
+      <h3>Compare query performance</h3>
       <ul class="tight">
         <li>Drop <code>EXPLAIN</code>, compare wall-clock</li>
         <li>Trino UI → <b>localhost:8080/ui/</b> → the query detail shows <b>splits</b> and
@@ -856,18 +844,18 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
         <li>Filter on <code>ts</code> instead: column stats still skip files — but
             <code>ts_month</code> prunes whole <b>partitions</b> outright</li>
       </ul>
-      <p class="small dim" style="margin-top:12px">Partitioning isn't magic. It's min/max stats
-        you were going to write down anyway.</p>
+      <p class="small dim" style="margin-top:12px">Partition values and column statistics
+        help Trino exclude files before reading them.</p>
     </div>
   </div>
   <aside class="notes">
-    The demo that lands: run the narrow and wide query back to back and read the bytes-read
-    number out loud. It's the difference between "trust me, it's efficient" and seeing it.
+    Run the narrow and wide queries back to back. Compare the bytes read in the
+    Trino UI and relate the difference to the filters.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 2 · Metadata" data-accent="query">
-  <div class="chip">Step 2 · Time travel</div>
+<section class="slide" data-title="2.2.2 — Metadata and snapshots" data-accent="query">
+  <div class="chip">2.2.2 — Metadata and snapshots</div>
   <h2>Tables <span class="thin">about</span> the table</h2>
   <pre class="sql"><span class="k">SELECT</span> * <span class="k">FROM</span> iceberg.esa_adb.<span class="s">"readings$snapshots"</span>;
 
@@ -880,60 +868,60 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
     <p>Every Flink checkpoint you watched in Step 1 is <b>a row in that snapshots table</b>.
        Pick an early one and count rows — you're reading the table as it was mid-ingest.</p>
   </div>
-  <p class="kicker">No backup, no restore, no extra storage. Just old metadata nobody deleted.</p>
+  <p class="kicker">Time travel uses retained snapshots and the data files they reference.</p>
 </section>
 
-<section class="slide" data-title="Step 2 · Views" data-accent="query">
-  <div class="chip">Step 2 · Views</div>
-  <h2>Enrich once, reuse everywhere</h2>
+<section class="slide" data-title="2.3 — Telemetry views" data-accent="query">
+  <div class="chip">2.3 — Telemetry views</div>
+  <h2>Views for telemetry and anomaly labels</h2>
   <p><code>readings</code> is the fact table: <code>channel, ts, ts_month, value</code>, plus five
      provenance columns (<code>source_file</code>, <code>run_id</code>, &hellip;) recording where each row
      came from. Step 1 also loaded <code>channels</code>, <code>labels</code> and <code>anomaly_types</code>.
-     Join them <b>once</b>, behind a name:</p>
+     Define their joins as reusable views:</p>
   <pre class="sql sm">task trino:views</pre>
   <div class="cols-3">
     <div class="card teal"><h3><code>readings_enriched</code></h3><p class="dim">readings ⋈ channel
       metadata — subsystem, physical unit, group.</p></div>
     <div class="card teal"><h3><code>anomalies</code></h3><p class="dim">the labelled windows +
       their type, with ISO-8601 strings parsed into real timestamps.</p></div>
-    <div class="card rose"><h3><code>labeled_readings</code></h3><p class="dim"><b>The payoff.</b>
+    <div class="card rose"><h3><code>labeled_readings</code></h3><p class="dim">
       Every reading tagged with whether it falls inside a labelled anomaly.</p></div>
   </div>
   <div class="callout" style="margin-top:22px">
     <p><code>labeled_readings</code> is a <b>range join</b> — each reading matched to any window
-      covering its timestamp. That one view powers "colour the anomalies" in Superset
-      <em>and</em> "grade yourself" for the agent in Step 5.</p>
+      covering its timestamp. Superset uses it to colour anomaly periods, and the
+      agent uses it to validate findings in Step 5.</p>
   </div>
 </section>
 
-<section class="slide" data-title="Step 2 · Superset" data-accent="query">
-  <div class="chip">Step 2 · Superset</div>
-  <h2>Now make a picture of it</h2>
+<section class="slide" data-title="2.4 — Create charts in Superset" data-accent="query">
+  <div class="chip">2.4 — Create charts in Superset</div>
+  <h2>Create charts in Superset</h2>
   <div class="cols wide-right">
     <div>
-      <pre class="sm">task up:query</pre>
+      <pre class="sm">task up:query  <span class="c"># 2.4.1</span></pre>
       <p class="small dim">localhost:8088 · <b>admin / admin</b></p>
-      <p>Pre-wired: the Trino connection <em>and</em> the <code>readings</code> dataset are
-         already registered. Chart immediately.</p>
+      <p>The stack registers the Trino connection and the <code>readings</code>
+         dataset automatically.</p>
       <p class="small dim">By hand it's <b>Settings → Database Connections</b> and
         <b>Datasets → + Dataset</b>.</p>
     </div>
     <div>
-      <ol class="tight">
-        <li><b>SQL Lab</b> — run one query to prove connectivity.</li>
-        <li><b>Chart</b> on <code>readings</code>: time-series line, X = <code>ts</code> (day),
+      <ol class="tight" style="list-style:none;padding-left:0">
+        <li><b>2.4.2 — SQL Lab</b>: run one query to check connectivity.</li>
+        <li><b>2.4.3 — Chart readings</b>: time-series line, X = <code>ts</code> (day),
             Y = <code>AVG(value)</code>, dimension = <code>channel</code>. Filter to 3–4 channels.</li>
-        <li>Add <code>labeled_readings</code> as a dataset, chart <code>channel_41</code> with
-            <code>is_anomaly</code> as the colour dimension — <b>the anomalies light up</b>.</li>
-        <li>Put both on a dashboard.</li>
+        <li><b>2.4.4 — Chart anomalies</b>: add <code>labeled_readings</code> as a dataset, chart <code>channel_41</code> with
+            <code>is_anomaly</code> as the colour dimension to highlight labelled anomalies.</li>
+        <li><b>2.4.5 — Dashboard</b>: add both charts and inspect their queries.</li>
       </ol>
     </div>
   </div>
   <p class="kicker">Then open <b>SQL Lab → Query History</b>: Superset is issuing the same SQL you
      wrote by hand, and the planner prunes for dashboards exactly like it did for you.</p>
   <aside class="notes">
-    Step 3 of the list is the one to make sure everyone gets — seeing the labelled anomaly
-    highlighted on a real chart is what makes Step 5's "the agent found this by itself" land.
+    Help attendees add the labelled anomaly chart. They'll use it to inspect the
+    agent's findings in Step 5.
   </aside>
 </section>
 
@@ -945,7 +933,7 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
     <p class="dim">Put the key from your <b>card</b> into <code>.env</code> now — copy
       <code>.env.example</code> if you haven't. Step 3 needs it the moment we're back.</p>
   </div>
-  <p class="kicker">When we return: we stop writing the SQL ourselves.</p>
+  <p class="kicker">Next, we'll connect a model to the workshop stack.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
@@ -955,77 +943,71 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
 <section class="slide center" data-title="Step 3 · Chat" data-accent="chat">
   <div class="chip">Step 3</div>
   <h1>Chat</h1>
-  <p class="lead dim">Put a model in front of the warehouse.<br/>
-     This step is <em>plumbing</em> — Step 4 is where it gets interesting.</p>
+  <p class="lead dim">Connect LibreChat to the model provider through LiteLLM.<br/>
+     Step 4 adds query tools.</p>
 </section>
 
-<section class="slide" data-title="Step 3 · The pieces" data-accent="chat">
-  <div class="chip">Step 3 · The pieces</div>
-  <h2>Three boxes</h2>
+<section class="slide" data-title="3.1 — Chat services and the workshop key" data-accent="chat">
+  <div class="chip">3.1 — Chat services and the workshop key</div>
+  <h2>Chat services and credentials</h2>
   <div class="cols-3">
-    <div class="card violet"><h3>LibreChat</h3><p class="dim">Open source ChatGPT-style UI.
-      Multi-user, any provider — and the reason we picked it: <b>first-class MCP support</b>.</p></div>
+    <div class="card violet"><h3>LibreChat</h3><p class="dim">Open source chat UI with
+      multi-user support, connections to multiple providers, and <b>MCP support</b>.</p></div>
     <div class="card violet"><h3>LiteLLM</h3><p class="dim">An LLM gateway. One
       OpenAI-compatible HTTP API in front of 100+ providers.</p></div>
     <div class="card violet"><h3>The key on your card</h3><p class="dim">Scoped to the workshop model project,
       on the shared workshop credential.</p></div>
   </div>
-  <pre style="margin-top:28px">task up:chat     <span class="c"># litellm, mongodb, librechat</span></pre>
+  <pre style="margin-top:28px">task up:chat     <span class="c"># 3.3.3 — start chat services</span></pre>
   <p class="kicker">LibreChat → <b>localhost:3080</b>. Register any account — it's your local
      instance, email verification is off.</p>
 </section>
 
-<section class="slide" data-title="Step 3 · LiteLLM" data-accent="chat">
-  <div class="chip">Step 3 · A real trade-off</div>
-  <h2>Do we actually need LiteLLM?</h2>
-  <p class="lead">Honest answer: <b>for this workshop, no.</b> LibreChat speaks the OpenAI API natively.
-     We could delete a whole service.</p>
-  <p>We keep it on purpose:</p>
+<section class="slide" data-title="3.2 — Gateway controls in LiteLLM" data-accent="chat">
+  <div class="chip">3.2 — Gateway controls in LiteLLM</div>
+  <h2>Why use LiteLLM?</h2>
+  <p class="lead">LibreChat can connect directly to an OpenAI-compatible provider.
+     LiteLLM adds gateway controls:</p>
   <div class="cols-3">
-    <div class="card"><h3>1 · One place for the key</h3><p class="dim">The credential lives
-      in LiteLLM's environment and <b>nowhere else</b>. Every client gets a scoped master key
-      instead.</p></div>
-    <div class="card"><h3>2 · A control point</h3><p class="dim">Shared credential + 40
-      attendees ⇒ you want per-key <b>rate limits and spend tracking</b>. A gateway is where
-      that lives.</p></div>
-    <div class="card"><h3>3 · Swappability</h3><p class="dim">Point <code>workshop-default</code>
-      at a different provider; <b>no client changes</b>. Apps ask for a name, not an
-      infrastructure.</p></div>
+    <div class="card"><h3>1 · Credentials</h3><p class="dim">LiteLLM holds the provider
+      key. Clients use a gateway key. Isolation is limited on a single-user laptop.</p></div>
+    <div class="card"><h3>2 · Usage controls</h3><p class="dim">Apply per-key budgets,
+      rate limits, and spend tracking to requests routed through the gateway.</p></div>
+    <div class="card"><h3>3 · Provider configuration</h3><p class="dim">Map
+      <code>workshop-default</code> to a provider and model without editing each client.</p></div>
   </div>
-  <p class="kicker">The trade: one more container in exchange for credential isolation and
-     control. Rebuilding this at home, alone? <b>Skip it.</b></p>
+  <p class="kicker">These controls require another service to run and maintain.
+     A direct connection may be sufficient for personal use.</p>
   <aside class="notes">
-    Worth being explicit that we're showing them a decision, not a best practice. Naming the
-    cost of your own architecture buys enormous credibility with an engineering audience.
+    Explain why the workshop includes the gateway and when attendees might use
+    a direct provider connection instead.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 3 · Prove it" data-accent="chat">
-  <div class="chip">Step 3 · Prove it</div>
-  <h2>The chat UI is <span class="thin">this one call</span></h2>
+<section class="slide" data-title="3.5 — Test the model API" data-accent="chat">
+  <div class="chip">3.5 — Test the model API</div>
+  <h2>Test the model endpoint</h2>
   <pre class="sm">curl -s http://localhost:4000/v1/chat/completions \
   -H <span class="s">"Authorization: Bearer sk-workshop"</span> -H <span class="s">"Content-Type: application/json"</span> \
   -d <span class="s">'{"model": "workshop-default", "messages": [{"role": "user", "content": "ping"}]}'</span></pre>
-  <p class="lead">That same request, made by LibreChat on your behalf, is <em>everything</em> the
-     chat window is doing.</p>
+  <p class="lead">LibreChat sends model requests to the same endpoint.</p>
   <p>Open a new chat → <b>Workshop Models → workshop-default</b> → say hello.</p>
   <p class="kicker">If this curl fails, the UI will too — always debug at this layer first.</p>
 </section>
 
-<section class="slide center" data-title="Step 3 · The gap" data-accent="chat">
-  <div class="chip">Step 3 · The gap</div>
-  <h2>Now ask it something real</h2>
+<section class="slide center" data-title="3.8 — Check warehouse access" data-accent="chat">
+  <div class="chip">3.8 — Check warehouse access</div>
+  <h2>Ask about the warehouse</h2>
   <div class="ask">"How many telemetry samples are in the readings table?"</div>
-  <p class="lead">It will invent a number, or admit it has no idea. It has <b>no connection</b>
-     to our warehouse whatsoever — the model only knows what's in its prompt.</p>
+  <p class="lead">The model has <b>no warehouse connection</b> yet, so it cannot
+     verify the answer. It may decline to answer or invent a number.</p>
   <div class="callout">
-    <p>Giving it a way to <em>find out</em> — tools it can call, with results fed back into the
-       conversation — is exactly what <b>MCP</b> standardises.</p>
+    <p>In Step 4, we'll use <b>MCP</b> to expose query tools and return their
+       results to the conversation.</p>
   </div>
   <aside class="notes">
-    <b>Do this live.</b> Actually ask it and read the hallucinated number out loud. Thirty
-    seconds of theatre that makes the next 40 minutes obvious. Bonus: ask it twice and get two
-    different numbers.
+    Ask this live. Discuss the response and explain why a warehouse query is
+    needed to verify the row count.
   </aside>
 </section>
 
@@ -1040,29 +1022,28 @@ task flink:job        <span class="c"># run the ingest — blocks until loaded</
      functions it can call, with typed inputs and outputs.</p>
 </section>
 
-<section class="slide" data-title="Step 4 · Why" data-accent="mcp">
-  <div class="chip">Step 4 · Why</div>
-  <h2>Why not just paste the SQL results in?</h2>
-  <p class="lead">You could. But a server gives the model <em>agency with guardrails</em>.</p>
+<section class="slide" data-title="4.1 — Tool operations and restrictions" data-accent="mcp">
+  <div class="chip">4.1 — Tool operations and restrictions</div>
+  <h2>What the tools allow</h2>
+  <p class="lead">An MCP server lets the model request data during an investigation.</p>
   <div class="cols">
     <div class="card amber">
       <h3>The model decides</h3>
-      <p class="dim"><b>Which</b> tool, <b>when</b>, and <b>how often</b>. It can list tables,
-        read a schema, run a query, notice the answer is wrong, and refine.</p>
-      <p><b>That loop is where the magic is.</b></p>
+      <p class="dim">It selects tools to list tables, inspect schemas, and run queries.</p>
+      <p>It can use the results to revise a query or choose another tool.</p>
     </div>
     <div class="card amber">
       <h3>You decide what's possible</h3>
       <p class="dim">Our server permits <b>read-only</b> queries and caps result sizes.</p>
-      <p>The model can't <code>DROP TABLE</code> — even if asked nicely.</p>
+      <p>The query check rejects statements such as <code>DROP TABLE</code>.</p>
     </div>
   </div>
-  <p class="kicker">Capability and constraint in the same object. That's the whole design brief.</p>
+  <p class="kicker">The server defines which operations tools permit and enforces their limits.</p>
 </section>
 
-<section class="slide" data-title="Step 4 · The server" data-accent="mcp">
-  <div class="chip">Step 4 · The server</div>
-  <h2>A tool is just a function</h2>
+<section class="slide" data-title="4.2 — Inspect the server implementation" data-accent="mcp">
+  <div class="chip">4.2 — Inspect the server implementation</div>
+  <h2>Define a tool as a function</h2>
   <div class="cols wide-left">
     <div>
       <pre class="py sm"><span class="k">from</span> fastmcp <span class="k">import</span> FastMCP
@@ -1076,49 +1057,48 @@ mcp = FastMCP(<span class="s">"telemetry-trino"</span>)
     ...
 
 mcp.run(transport=<span class="s">"http"</span>, port=<span class="s">8000</span>)</pre>
-      <p class="small dim">The whole thing is ~150 lines — <code>mcp-server/server.py</code>.</p>
+      <p class="small dim">See the implementation in <code>mcp-server/server.py</code>.</p>
     </div>
     <div>
       <div class="card amber"><h3>1 · Signature → schema</h3><p class="dim">FastMCP turns the
-        type hints into JSON Schema and the <b>docstring into the tool description</b>. No
-        boilerplate.</p></div>
-      <div class="card amber" style="margin-top:12px"><h3>2 · Docstrings are prompts</h3>
+        type hints into JSON Schema and the <b>docstring into the tool description</b>.</p></div>
+      <div class="card amber" style="margin-top:12px"><h3>2 · Describe intended use</h3>
         <p class="dim">The model reads them to decide when and how to call. <code>query</code>'s
-        docstring tells it to <b>aggregate rather than pull raw rows</b> — watch it obey.</p></div>
+        docstring asks it to <b>aggregate rather than pull raw rows</b>. Check how it
+        uses this guidance.</p></div>
     </div>
   </div>
   <aside class="notes">
-    Point 2 is the one people underestimate. Open the actual docstring in the repo and read it
-    aloud — it's written like a prompt, because it is one. Bad docstring = tool never gets called,
-    or gets called wrong. This is prompt engineering wearing an API's clothes.
+    Open the query docstring in the repo. Explain how the description guides tool
+    selection and argument construction, then compare it with the model's calls.
   </aside>
 </section>
 
-<section class="slide center" data-title="Step 4 · Design" data-accent="mcp">
-  <div class="chip">Step 4 · The design question</div>
-  <h2>Specific beats general <span class="thin">— until it doesn't</span></h2>
+<section class="slide center" data-title="4.2 — Inspect the server implementation" data-accent="mcp">
+  <div class="chip">4.2 — Inspect the server implementation</div>
+  <h2>General queries and purpose-built tools</h2>
   <div class="cols">
     <div class="card">
       <h3><code>query(sql)</code></h3>
-      <p class="dim">Maximum flexibility. The model writes its own SQL — and can get it subtly,
-        confidently wrong.</p>
+      <p class="dim">The model writes SQL for a range of questions. Inspect the query
+        and results for errors.</p>
     </div>
     <div class="card teal">
       <h3><code>channel_summary(channel)</code></h3>
-      <p class="dim">One job, one fixed, <b>correct</b> SQL statement. Reliable every time —
-        and useless for anything else.</p>
+      <p class="dim">A fixed SQL statement answers a specific question, reducing the
+        need for the model to construct a query.</p>
     </div>
   </div>
   <div class="callout" style="margin-top:26px">
-    <p>Watch the model's behaviour change between them. <b>Real MCP server design is choosing
-       that mix</b> — and it's the single most consequential decision you'll make.</p>
+    <p>Compare how the model uses each tool. Choose the scope based on the
+       questions you need to support and the errors you can control.</p>
   </div>
 </section>
 
-<section class="slide" data-title="Step 4 · Wire it up" data-accent="mcp">
-  <div class="chip">Step 4 · Wire it up</div>
+<section class="slide" data-title="4.3 — Start and connect the server" data-accent="mcp">
+  <div class="chip">4.3 — Start and connect the server</div>
   <h2>Run it</h2>
-  <pre>task up:mcp     <span class="c"># build + start the server, register it in LibreChat</span></pre>
+  <pre>task up:mcp     <span class="c"># 4.3.1 — start the server</span></pre>
   <div class="cols wide-left">
     <div>
       <pre class="yaml sm"><span class="c"># librechat/librechat.yaml</span>
@@ -1126,20 +1106,20 @@ mcpServers:
   telemetry:
     type: streamable-http
     url: http://mcp-server:8000/mcp</pre>
-      <p>Reload LibreChat, open a new chat, and enable the <b>telemetry</b> server in the tools
+      <p><b>4.3.2:</b> Reload LibreChat, open a new chat, and enable the <b>telemetry</b> server in the tools
          menu.</p>
     </div>
     <div class="card amber">
       <h3>Watch the tool-call panel</h3>
-      <p class="dim">You'll see the model list tables, describe schemas, and iterate on SQL —
-        the same workflow a human analyst follows, at speed.</p>
+      <p class="dim">You'll see the model list tables, describe schemas, and revise SQL.
+        Inspect the queries and their results.</p>
       <p class="small dim">If it doesn't appear: <code>docker compose restart librechat</code>.</p>
     </div>
   </div>
 </section>
 
-<section class="slide" data-title="Step 4 · Try it" data-accent="mcp">
-  <div class="chip">Step 4 · Try it</div>
+<section class="slide" data-title="4.4 — Query through chat" data-accent="mcp">
+  <div class="chip">4.4 — Query through chat</div>
   <h2>Ask for things that need <span class="thin">several</span> tool calls</h2>
   <ul class="plain">
     <li class="ask" style="font-size:22px">"What tables and views are available, and what does the readings table look like?"</li>
@@ -1149,35 +1129,33 @@ mcpServers:
     <li class="ask" style="font-size:22px">"Pick one labelled anomaly on channel_41 and show me the readings in the hour around it."</li>
   </ul>
   <aside class="notes">
-    Give them 10 minutes to play before the exercises. Encourage them to <b>read the SQL the
-    model writes</b> — it's frequently good, occasionally wrong in an instructive way, and
-    arguing with it is the best possible exercise.
+    Allow 10 minutes to try questions before the exercises. Encourage attendees to
+    <b>read the generated SQL</b>, check the results, and ask the model to correct errors.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 4 · Exercises" data-accent="mcp">
-  <div class="chip">Step 4 · Your turn</div>
+<section class="slide" data-title="4.5 — Extend and review the tools" data-accent="mcp">
+  <div class="chip">4.5 — Extend and review the tools</div>
   <h2>Exercises</h2>
   <div class="cols-3">
     <div class="card teal">
-      <h3>1 · Add a tool</h3>
+      <h3>4.5.1 · Channel-list tool</h3>
       <p class="dim"><code>list_channels()</code> → distinct channels and their sample counts.
-        Restart, then watch the model start reaching for it unprompted.</p>
+        Restart, then check whether the model uses it for channel questions.</p>
     </div>
     <div class="card teal">
-      <h3>2 · Add an anomaly tool</h3>
+      <h3>4.5.2 · Anomaly-window tool</h3>
       <p class="dim"><code>anomalies_for(channel)</code> → the windows and their categories, so
         it stops rewriting that join every time. Then ask it to <em>investigate</em> one.</p>
     </div>
     <div class="card rose">
-      <h3>3 · Break it on purpose</h3>
+      <h3>4.5.3 · Query restrictions</h3>
       <p class="dim">Read the read-only check. Think about what else production needs:
         <b>row-level auth, query timeouts, cost caps</b>.</p>
-      <p class="small dim">(Don't actually remove it.)</p>
     </div>
   </div>
   <p class="kicker">The same server runs against Claude Desktop, Claude Code, or anything else
-     that speaks MCP. <b>That's the point of a protocol.</b></p>
+     that supports MCP.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
@@ -1185,13 +1163,14 @@ mcpServers:
      ═══════════════════════════════════════════════════════════════════ -->
 
 <section class="slide center" data-title="Step 5 · Agent" data-accent="agent">
-  <div class="chip">Step 5 · Capstone</div>
+  <div class="chip">Step 5</div>
   <h1>The telemetry<br/>analysis agent</h1>
-  <p class="lead dim">Explore. Detect. Visualise. <em>Then grade itself.</em></p>
+  <p class="lead dim">Explore telemetry, score anomalies, create charts,<br/>
+     and compare findings with the labels.</p>
 </section>
 
-<section class="slide" data-title="Step 5 · Architecture" data-accent="agent">
-  <div class="chip">Step 5 · What we're building</div>
+<section class="slide" data-title="5.1 — Analysis agent architecture" data-accent="agent">
+  <div class="chip">5.1 — Analysis agent architecture</div>
   <h2>Three focused servers, one conversation</h2>
   <svg viewBox="0 0 1140 458" width="1140" height="458">
     <defs>
@@ -1213,7 +1192,7 @@ mcpServers:
     <rect class="b2" x="40"  y="150" width="310" height="96" rx="12" stroke="#1c5350"/>
     <text class="t2" x="64" y="182">trino-mcp <tspan class="ts2">· explore</tspan></text>
     <text class="ts2" x="64" y="206">query / list_tables / describe</text>
-    <text class="ts2" x="64" y="228">dataset-agnostic — point it anywhere</text>
+    <text class="ts2" x="64" y="228">SQL access for other datasets too</text>
 
     <rect class="b2" x="400" y="150" width="340" height="96" rx="12" stroke="#5c4a18"/>
     <text class="t2" x="424" y="182">esa-adb <tspan class="ts2">· detect</tspan></text>
@@ -1222,8 +1201,8 @@ mcpServers:
 
     <rect class="b2" x="790" y="150" width="310" height="96" rx="12" stroke="#3b3470"/>
     <text class="t2" x="814" y="182">superset-mcp <tspan class="ts2">· visualise</tspan></text>
-    <text class="ts2" x="814" y="206">intent → chart URL</text>
-    <text class="ts2" x="814" y="228">pure presentation</text>
+    <text class="ts2" x="814" y="206">chart request → chart URL</text>
+    <text class="ts2" x="814" y="228">chart and dashboard tools</text>
 
     <path class="ln2" d="M480 84 C 400 110, 260 118, 200 146"/>
     <path class="ln2" d="M570 84 V146"/>
@@ -1245,40 +1224,39 @@ mcpServers:
     <path class="ln2" d="M400 360 C 412 378, 470 384, 508 389"/>
   </svg>
   <aside class="notes">
-    Emphasise the shape, not the boxes: the agent sees <b>one flat menu of 19 tools</b> and has no
-    idea there are three servers. The split is for <b>you</b> — so you can lift trino-mcp and
-    superset-mcp into a different project unchanged.
+    Explain that the agent receives tools from all three servers. Separating SQL
+    access, telemetry analysis, and charting lets other projects reuse the query
+    and chart servers with their own domain tools.
   </aside>
 </section>
 
-<section class="slide center" data-title="Step 5 · Why three" data-accent="agent">
-  <div class="chip">Step 5 · The pattern</div>
+<section class="slide center" data-title="5.1 — Analysis agent architecture" data-accent="agent">
+  <div class="chip">5.1 — Analysis agent architecture</div>
   <h2>Why three servers and not one?</h2>
   <div class="cols-3">
-    <div class="card teal"><h3><code>trino-mcp</code></h3><p class="dim">Dataset-agnostic. Point
-      it at <em>any</em> catalog and it works. Zero ESA in it.</p></div>
+    <div class="card teal"><h3><code>trino-mcp</code></h3><p class="dim">Provides SQL access
+      without depending on the ESA dataset.</p></div>
     <div class="card amber"><h3><code>esa-adb</code></h3><p class="dim">The domain layer —
-      telemetry navigation and the phase-aware detectors. All the specific knowledge lives here.</p></div>
-    <div class="card violet"><h3><code>superset-mcp</code></h3><p class="dim">Pure visualisation.
-      Knows nothing about telemetry, everything about charts.</p></div>
+      telemetry navigation and phase-aware detectors.</p></div>
+    <div class="card violet"><h3><code>superset-mcp</code></h3><p class="dim">Creates charts
+      and dashboards through Superset.</p></div>
   </div>
   <div class="callout" style="margin-top:28px">
-    <p><b>Composing small, focused MCP servers is the pattern to internalise.</b> The agent
-      doesn't care — it just sees a menu. You care, because two of these three are reusable
-      tomorrow.</p>
+    <p>Each server has a separate role. You can reuse the query and charting
+      servers with another dataset and supply different analysis tools.</p>
   </div>
 </section>
 
-<section class="slide" data-title="Step 5 · Gotchas" data-accent="agent">
-  <div class="chip">Step 5 · Two guards we had to clear</div>
-  <h2>These <span class="thin">will</span> bite you at home</h2>
+<section class="slide" data-title="5.2 — Start the three MCP servers" data-accent="agent">
+  <div class="chip">5.2 — Start the three MCP servers</div>
+  <h2>Host checks and the SSRF allowlist</h2>
   <div class="cols">
     <div class="card">
       <h3>1 · DNS-rebinding Host check</h3>
       <p class="dim">MCP's streamable-http transport only accepts <code>localhost</code> in the
         <code>Host</code> header, and returns <b>421 Misdirected Request</b> otherwise.</p>
       <p class="dim">Our servers reach each other by compose hostname, so:
-        <code>host_origin_protection=False</code> — fine on a trusted local network.</p>
+        <code>host_origin_protection=False</code> for this local workshop stack.</p>
     </div>
     <div class="card">
       <h3>2 · LibreChat SSRF allowlist</h3>
@@ -1289,41 +1267,40 @@ mcpServers:
     [mcp-server, trino-mcp, superset-mcp]</pre>
     </div>
   </div>
-  <p class="kicker">Both are <b>real security features</b> doing their job. Know why you're
-     turning them off, and where you wouldn't.</p>
+  <p class="kicker">These settings allow connections using the workshop's Compose hostnames.</p>
 </section>
 
-<section class="slide" data-title="Step 5 · Build it" data-accent="agent">
-  <div class="chip">Step 5 · Build it</div>
+<section class="slide" data-title="5.4 — Create the analysis agent" data-accent="agent">
+  <div class="chip">5.4 — Create the analysis agent</div>
   <h2>Assemble the agent <span class="thin">— LibreChat v0.8.7</span></h2>
-  <pre class="sm">task up:mcp     <span class="c"># builds + starts all three servers, reloads LibreChat</span></pre>
+  <pre class="sm">task up:mcp     <span class="c"># 5.2 — start all three servers</span></pre>
   <div class="cols">
     <div>
-      <ol class="tight">
-        <li>Pick <b>Agents</b> from the endpoint menu → open the <b>Agent Builder</b>.</li>
-        <li><b>Name:</b> Telemetry Anomaly Analyst</li>
-        <li><b>Model:</b> Workshop Models → <code>workshop-default</code></li>
-        <li><b>Instructions:</b> the methodology prompt (next slide).</li>
-        <li><b>Tools:</b> enable <b>esa-adb</b>, <b>trino</b>, <b>superset</b>.</li>
-        <li><b>Save</b>, then <b>Share</b> so everyone can use it.</li>
+      <ol class="tight" style="list-style:none;padding-left:0">
+        <li><b>5.4.1 — Builder:</b> Agents menu → Agent Builder.</li>
+        <li><b>5.4.2 — Name:</b> Telemetry Anomaly Analyst</li>
+        <li><b>5.4.3 — Model:</b> Workshop Models → <code>workshop-default</code></li>
+        <li><b>5.4.4 — Instructions:</b> paste the prompt (next slide).</li>
+        <li><b>5.4.5 — Tools:</b> enable <b>esa-adb</b>, <b>trino</b>, <b>superset</b>.</li>
+        <li><b>5.4.6 — Save and share</b> the agent.</li>
       </ol>
     </div>
     <div class="card rose">
-      <h3>Two notes worth knowing</h3>
+      <h3>Model selection and sharing</h3>
       <p class="dim">Use <code>workshop-default</code>. The other models in the picker are fine
         for chat, but not all of them can call tools on this path.</p>
-      <p class="dim">v0.8.7 has <b>no API to create an agent</b>. Sharing one you built is the
-        reproducible path — not export/import.</p>
+      <p class="dim">v0.8.7 has <b>no API to create an agent</b>. Share the saved
+        agent to let attendees use the same configuration.</p>
     </div>
   </div>
 </section>
 
-<section class="slide" data-title="Step 5 · The prompt" data-accent="agent">
-  <div class="chip">Step 5 · The instructions</div>
-  <h2>A method, not a personality</h2>
+<section class="slide" data-title="5.4.4 — Investigation instructions" data-accent="agent">
+  <div class="chip">5.4.4 — Investigation instructions</div>
+  <h2>Investigation instructions</h2>
   <pre class="xs">You are a satellite-telemetry anomaly analyst. You have three MCP tool groups: trino (generic SQL
-exploration), esa-adb (telemetry navigation + scored anomaly detectors), and superset (turn intent
-into charts). Read the about://dataset resource first if your client exposes it.
+exploration), esa-adb (telemetry navigation + scored anomaly detectors), and superset (create
+charts). Read the about://dataset resource first if your client exposes it.
 
 <b>The data is anonymized, quantized "staircase" telemetry — raw-value thresholds are weak; reason
 about PHASE (which level, in what order) and DURATION (dwell).</b>
@@ -1333,27 +1310,27 @@ Method:
 2. <b>Detect</b>:      run phase_anomaly, plateau, data_gaps, stl_residual, cadence over a broad window.
                 Scores are relative — they mean nothing in isolation.
 3. <b>Calibrate</b>:   score a quiet window from the same channel and compare.
-4. <b>Zoom</b>:        readings_around the worst segment; describe what physically happened.
+4. <b>Zoom</b>:        readings_around the worst segment; describe the observed signal changes.
 5. <b>Corroborate</b>: cross_correlation against sibling channels in the same group.
-6. <b>Visualize</b>:   anomaly_overlay_chart(channel), then add_to_dashboard; hand back the URL.
-7. <span class="hl">DISCIPLINE: anomalies_for is the labeled ANSWER KEY. Do NOT consult it while detecting —
-                only afterward, to grade your findings (hits/misses/false alarms).</span>
+6. <b>Visualize</b>:   anomaly_overlay_chart(channel), then add_to_dashboard; return the URL.
+7. <span class="hl">Validate: do not call anomalies_for during detection. After recording your findings,
+                compare them with the labels (hits, misses, false alarms).</span>
 
 Report a ranked list: channel, window, the scores that flagged it vs the nominal comparison, a
 phase+duration explanation, the chart URL, and your confidence.</pre>
   <aside class="notes">
-    Two things to call out. <b>Domain briefing up top</b> — the staircase paragraph is what stops
-    it reaching for value thresholds. <b>Step 7 is the honesty clause</b> — without it the model
-    peeks at the labels and then "discovers" them, which looks brilliant and proves nothing.
+    Highlight the description of staircase signals and the calibration step.
+    Explain that labels are reserved for validation so the investigation must
+    produce findings from the signal first.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 5 · Detectors" data-accent="agent">
-  <div class="chip">Step 5 · The detectors</div>
-  <h2>Six detectors — <span class="thin">scores, never flags</span></h2>
+<section class="slide" data-title="5.5 — Anomaly detector scores" data-accent="agent">
+  <div class="chip">5.5 — Anomaly detector scores</div>
+  <h2>Six detectors returning <span class="thin">numeric scores</span></h2>
   <table>
     <tr><th style="width:280px">Tool</th><th>What it scores</th></tr>
-    <tr><td><code>phase_anomaly</code></td><td>unusual level / dwell-duration / transitions — <b>the staircase unlock</b></td></tr>
+    <tr><td><code>phase_anomaly</code></td><td>unusual levels, dwell durations, and transitions</td></tr>
     <tr><td><code>plateau</code></td><td>abnormally long "stuck" flat runs</td></tr>
     <tr><td><code>data_gaps</code></td><td>dropouts — worst gap vs the dominant sample interval</td></tr>
     <tr><td><code>stl_residual</code></td><td>departures from the channel's own trend and season</td></tr>
@@ -1361,29 +1338,26 @@ phase+duration explanation, the chart URL, and your confidence.</pre>
     <tr><td><code>cross_correlation</code></td><td>decorrelation from sibling channels (multivariate)</td></tr>
   </table>
   <div class="callout" style="margin-top:20px">
-    <p>Every one returns <b>numbers, not booleans</b>. So <em>the agent</em> decides what counts
-      as an alarm — by scoring a suspect window against a nominal one. <b>No hardcoded
-      thresholds anywhere.</b></p>
+    <p>The agent compares scores from suspect and nominal windows to decide
+      which findings to report.</p>
   </div>
   <aside class="notes">
-    This is the design lesson of the whole step: <b>don't put the judgement in the tool</b>. A
-    boolean detector bakes in a threshold you chose blind; a scored detector lets the model
-    calibrate against the channel's own behaviour. It's also why step 3 (calibrate) exists in the
-    prompt.
+    Explain how comparing scores with the channel's nominal behaviour provides
+    context for a finding. Relate this to the calibration step in the instructions.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 5 · The unlock" data-accent="agent">
-  <div class="chip">Step 5 · Why phase-awareness wins</div>
+<section class="slide" data-title="5.5 — Anomaly detector scores" data-accent="agent">
+  <div class="chip">5.5 — Anomaly detector scores</div>
   <h2>The March 2000 anomaly, in numbers</h2>
   <div class="cols wide-left">
     <div>
       <p><code>channel_41</code> dropped to level <b>~0.64</b> — <em>well inside</em> its normal
-         0.61–0.98 range. A value threshold shrugs.</p>
+         0.61–0.98 range. A range threshold would not identify it.</p>
       <p>And then it <b>stayed there for ~7.6 hours</b>.</p>
-      <p><code>phase_anomaly</code> flags it with a <b>dwell z-score of ~29</b>.
-         <code>plateau</code> and <code>data_gaps</code> spike alongside it.</p>
-      <div class="callout"><p><b>Phase + duration sees what value-only detectors can't.</b></p></div>
+      <p><code>phase_anomaly</code> returns a <b>dwell z-score of ~29</b>, with elevated
+         <code>plateau</code> and <code>data_gaps</code> scores.</p>
+      <div class="callout"><p>The long dwell provides evidence that the value alone does not.</p></div>
     </div>
     <div>
       <div class="cols" style="gap:14px">
@@ -1393,54 +1367,54 @@ phase+duration explanation, the chart URL, and your confidence.</pre>
       </div>
     </div>
   </div>
-  <p class="kicker">This is the anomaly from the drawing in Step 0. The agent finds it <b>without
-     being told it exists</b>.</p>
+  <p class="kicker">This is the anomaly illustrated in Step 0. Check whether the agent
+     identifies it before consulting the labels.</p>
 </section>
 
-<section class="slide" data-title="Step 5 · MCP primitives" data-accent="agent">
-  <div class="chip">Step 5 · Protocol</div>
-  <h2>MCP has three primitives — <span class="thin">we use all of them</span></h2>
+<section class="slide" data-title="5.6 — MCP tools, resources, and prompts" data-accent="agent">
+  <div class="chip">5.6 — MCP tools, resources, and prompts</div>
+  <h2>MCP tools, resources, and prompts</h2>
   <div class="cols-3">
     <div class="card amber"><h3>Tools</h3><p class="dim">Model-invoked <b>actions</b> — the
-      detectors, navigation, charts.</p><p class="small dim">Every client supports these.</p></div>
+      detectors, navigation, charts.</p><p class="small dim">LibreChat uses these tools.</p></div>
     <div class="card violet"><h3>Resources</h3><p class="dim">Read-only <b>context</b>:
       <code>about://dataset</code>, <code>schema://esa_adb</code>,
       <code>catalog://channels</code>.</p></div>
-    <div class="card teal"><h3>Prompts</h3><p class="dim">Canned, parameterised
+    <div class="card teal"><h3>Prompts</h3><p class="dim">Reusable, parameterised
       <b>workflows</b>: <code>investigate_channel(channel)</code>,
       <code>triage_window(ch, start, end)</code>.</p></div>
   </div>
   <div class="callout" style="margin-top:26px">
     <p><b>Client caveat:</b> LibreChat v0.8.7 consumes <b>tools only</b> — it ignores resources
-      and prompts. Open the <em>same server</em> in Claude Desktop or Claude Code and the
-      resources attach to context while the prompts appear as slash-commands.</p>
+      and prompts. Connect a client such as Claude Desktop or Claude Code to use
+      those features. How they appear depends on the client.</p>
   </div>
-  <p class="kicker">That's the lesson: the protocol is client-agnostic. <b>Build the full surface once.</b></p>
+  <p class="kicker">The same server can serve multiple MCP clients with different feature support.</p>
 </section>
 
-<section class="slide" data-title="Step 5 · Visualise" data-accent="agent">
-  <div class="chip">Step 5 · Visualise</div>
-  <h2>Do-what-I-mean, <span class="thin">no Superset API</span></h2>
+<section class="slide" data-title="5.7 — Chart creation through MCP" data-accent="agent">
+  <div class="chip">5.7 — Chart creation through MCP</div>
+  <h2>Creating charts through MCP</h2>
   <pre class="sm">anomaly_overlay_chart(<span class="s">"channel_41"</span>)
   → { <span class="s">"url"</span>: <span class="s">"http://localhost:8088/explore/?slice_id=1"</span> }</pre>
   <p class="lead">Behind that one call the server logs into Superset, registers
-     <code>labeled_readings</code> as a dataset, and constructs the genuinely fiddly
+     <code>labeled_readings</code> as a dataset, and constructs the
      <code>params</code> / <code>query_context</code> for a time-series line split by
      <code>is_anomaly</code>.</p>
   <div class="callout">
-    <p>The agent never sees <b>any</b> of it. <b>That encapsulation is the design goal</b> —
-      the tool's job is to absorb the ugly so the model can stay at the level of intent.</p>
+    <p>The tool handles the Superset API payloads. The agent supplies chart
+      arguments and receives a URL.</p>
   </div>
   <aside class="notes">
-    Good place to make the general point: the best MCP tools are the ones where the API underneath
-    is <b>miserable</b>. If a tool is a thin wrapper over a clean REST call, the model could
-    probably have handled the REST call. The value is in what you hide.
+    Show how the chart tool converts a short request into Superset API calls.
+    Explain why keeping chart configuration in the server reduces what the
+    model needs to generate.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 5 · Try it" data-accent="agent">
-  <div class="chip">Step 5 · Try it</div>
-  <h2>The moment of truth</h2>
+<section class="slide" data-title="5.8 — Run an anomaly investigation" data-accent="agent">
+  <div class="chip">5.8 — Run an anomaly investigation</div>
+  <h2>Run an investigation</h2>
   <div class="ask">"Investigate channel_41 for anomalies. Work from the signal — don't look at the
     labels until you've committed to your findings, then check yourself. Chart the result and give
     me the link."</div>
@@ -1456,25 +1430,24 @@ phase+duration explanation, the chart URL, and your confidence.</pre>
     <span class="pill">→</span>
     <span class="pill"><code>anomaly_overlay_chart</code></span>
     <span class="pill">→</span>
-    <span class="pill" style="border-color:#5e2c38"><code>anomalies_for</code> <span class="dim">grade itself</span></span>
+    <span class="pill" style="border-color:#5e2c38"><code>anomalies_for</code> <span class="dim">validate</span></span>
   </div>
-  <p class="kicker">Three servers. One conversation. <b>Nobody wrote any SQL.</b></p>
+  <p class="kicker">Inspect the query, detector, and charting calls used to answer the question.</p>
   <aside class="notes">
-    Run it live and <b>narrate the trace</b> as it streams. If it takes a wrong turn — great,
-    that's the honest version. Ask the room what they'd add to the prompt to fix it; that
-    conversation is worth more than a clean run.
+    Run it live and explain the tool-call trace. If it makes an error, ask attendees
+    how they would check the result and revise the instructions.
   </aside>
 </section>
 
-<section class="slide" data-title="Step 5 · Gotchas" data-accent="agent">
-  <div class="chip">Step 5 · Gotchas</div>
-  <h2>If something looks broken <span class="thin">(v0.8.7)</span></h2>
+<section class="slide" data-title="5.9 — Troubleshoot LibreChat" data-accent="agent">
+  <div class="chip">5.9 — Troubleshoot LibreChat</div>
+  <h2>LibreChat limitations <span class="thin">(v0.8.7)</span></h2>
   <ul>
     <li><b>Resources/prompts missing?</b> Expected — LibreChat doesn't surface them. Use Claude
         Desktop or Claude Code to see them.</li>
     <li><b>Malformed tool calls?</b> Tool-calling must be validated
         <em>per model</em>. Try <code>dropParams</code> on the custom endpoint, or switch models.
-        <b>Sonnet is the reliable driver.</b></li>
+        Use <code>workshop-default</code> for the workshop exercises.</li>
     <li><b>Want to share your agent?</b> Use <b>Share</b> — there's no create API in 0.8.7.</li>
     <li><b>Tool list looks truncated?</b> v0.8.7 paginates <code>tools/list</code> with an
         aggregate budget. 19 tools across three servers is comfortably inside it.</li>
@@ -1489,52 +1462,51 @@ phase+duration explanation, the chart URL, and your confidence.</pre>
 
 <section class="slide" data-title="Wrap-up">
   <div class="chip">Wrap-up</div>
-  <h2>What you actually built</h2>
+  <h2>What you've built</h2>
   <div class="cols">
     <div>
       <ul class="tight">
-        <li>A real <b>Iceberg lakehouse</b> on S3-compatible storage, with a catalog owning the commits</li>
-        <li>A <b>streaming ingest</b> that's also a batch job, one snapshot per checkpoint</li>
+        <li>An <b>Iceberg lakehouse</b> on S3-compatible storage, with a catalog managing commits</li>
+        <li>A <b>streaming ingest</b> over a finite source, one snapshot per checkpoint</li>
         <li>A <b>federated SQL engine</b> that prunes partitions using table metadata</li>
-        <li><b>Dashboards</b> over views that encode real domain joins</li>
-        <li>A <b>model gateway</b> with the credential in exactly one place</li>
+        <li><b>Dashboards</b> using telemetry and anomaly-label views</li>
+        <li>A <b>model gateway</b> with usage tracking and budget controls</li>
         <li><b>Three MCP servers</b> — generic, domain, presentation</li>
-        <li>An <b>agent</b> that investigates, visualises, and grades itself</li>
+        <li>An <b>agent</b> that investigates, visualises, and checks findings against labels</li>
       </ul>
     </div>
     <div class="card cyan">
-      <h3>All of it</h3>
-      <p class="dim" style="font-size:22px">open source · on a laptop · in Docker · in three hours ·
-        with no account anywhere except one key on a card</p>
-      <p class="dim">Every piece is independently deployable. None of it is a toy.</p>
+      <h3>Workshop setup</h3>
+      <p class="dim" style="font-size:22px">Open source services in Docker on your laptop,
+        connected to a model provider using the workshop key.</p>
+      <p class="dim">You can reuse the services in other projects.</p>
     </div>
   </div>
 </section>
 
-<section class="slide" data-title="Where next">
-  <div class="chip">Where to go from here</div>
+<section class="slide" data-title="5.10 — Extend the agent">
+  <div class="chip">5.10 — Extend the agent</div>
   <h2>Take it home</h2>
   <div class="cols-3">
-    <div class="card cyan"><h3>Your data</h3><p class="dim">Point <code>trino-mcp</code> at a
-      second catalog — the agent explores it with <b>no changes</b>. Add domain detectors as a
-      sibling to <code>esa-adb</code>.</p></div>
+    <div class="card cyan"><h3>Your data</h3><p class="dim">Configure <code>trino-mcp</code>
+      for another dataset and add a server with detectors suited to that data.</p></div>
     <div class="card teal"><h3>More signal</h3><p class="dim">Re-run today at
       <code>medium</code> or <code>full</code> size — all of Mission1, or all three missions.
       Same commands.</p></div>
     <div class="card violet"><h3>More protocol</h3><p class="dim">Add MCP
       <b>elicitation</b> and <b>sampling</b>. Run the same servers against Claude Desktop or
-      Claude Code — the protocol is the point.</p></div>
+      Claude Code.</p></div>
   </div>
   <div class="callout" style="margin-top:28px">
     <p>Everything today is in the repo, and the docs at <b>localhost:4321</b> are the written
-      version of these slides. Take the whole thing.</p>
+      version of these slides.</p>
   </div>
 </section>
 
 <section class="slide center title-slide" data-title="">
   <h1 style="font-size:64px">Thank you 🛰️</h1>
   <p class="sub">From raw ESA telemetry to an agent that finds hard-to-spot anomalies —
-     and shows you the picture.</p>
+     and creates charts to inspect the findings.</p>
   <div class="cols" style="margin-top:26px; max-width:960px">
     <div class="card">
       <h3>The dataset</h3>
@@ -1551,7 +1523,7 @@ phase+duration explanation, the chart URL, and your confidence.</pre>
     JONATHAN MORTON &nbsp;<span style="color:#2f3d5e">·</span>&nbsp; jonathan.morton@ra231.com<br/>
     CHRISTOPHER FICHMAN &nbsp;<span style="color:#2f3d5e">·</span>&nbsp; chris.fichman@ra231.com
   </div>
-  <div class="meta" style="margin-top:18px; color:var(--amber)">QUESTIONS — AND THEN GO BREAK SOMETHING</div>
+  <div class="meta" style="margin-top:18px; color:var(--amber)">QUESTIONS</div>
 </section>
 
 </div><!-- /stage -->

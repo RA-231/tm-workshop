@@ -201,6 +201,7 @@ tasks:
   up:
     desc: Start the entire stack (all steps)
     cmds:
+      - python3 scripts/render-litellm-config.py
       - docker compose up -d --build
       - bash scripts/init-garage.sh
 
