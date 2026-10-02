@@ -46,7 +46,7 @@ into it as `LLM_API_KEY`.
 
 The key is about 170 characters, so rather than typing it, scan the QR code on
 your card. Run `task up:docs` if it isn't already running, open
-**[http://localhost:4321/creds](http://localhost:4321/creds)**, click *Start
+**[http://localhost:4321/creds/](http://localhost:4321/creds/)**, click *Start
 camera*, hold the card up, and copy the two lines it decodes into `.env`.
 
 That page is worth a second's thought, because it is doing something you should
