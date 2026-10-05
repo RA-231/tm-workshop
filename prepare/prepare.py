@@ -7,6 +7,8 @@ Two kinds of output, kept in separate directories so the readings ingest
     data/prepared/meta/channels.json          the channel catalog
     data/prepared/meta/labels.json            the anomaly windows
     data/prepared/meta/anomaly_types.json     the anomaly taxonomy
+    data/prepared/manifest.json               written last; the receipt that
+                                              says the two above are complete
 
 Each channel file is a pickled pandas DataFrame (a DatetimeIndex plus one
 float32 column); the metadata are small CSVs. Flink's SQL filesystem connector
@@ -20,6 +22,7 @@ Env knobs:
 """
 
 import csv
+import datetime
 import json
 import logging
 import os
@@ -71,12 +74,16 @@ def convert_channel(path: Path, out: Path) -> int:
 
 
 def convert_meta(csv_path: Path, keymap: dict, out: Path) -> int:
-    with csv_path.open(newline="") as src, out.open("w") as dst:
+    # Via a .part file: Flink parses these whole, so a run killed mid-write must
+    # not leave a truncated object under the name it reads.
+    part = out.with_name(out.name + ".part")
+    with csv_path.open(newline="") as src, part.open("w") as dst:
         n = 0
         for row in csv.DictReader(src):
             dst.write(json.dumps({v: row.get(k, "") for k, v in keymap.items()}))
             dst.write("\n")
             n += 1
+    part.replace(out)
     return n
 
 
@@ -87,6 +94,16 @@ def main() -> int:
     if not files:
         log.error("no channel files under %s — run `task data:download` first", DATA_DIR)
         return 1
+
+    # The manifest is this run's receipt, written only after every channel and
+    # metadata file has converted. Dropping it first means a run that dies
+    # partway leaves no receipt, and scripts/tables-loaded.sh then refuses to
+    # treat the short output it left behind as a complete load. Swapping a
+    # staged directory in at the end would do the same without discarding the
+    # previous output, but the medium set prepares to ~58 GB and holding two
+    # copies at once costs more disk than the workshop can ask for.
+    manifest = OUT_DIR / "manifest.json"
+    manifest.unlink(missing_ok=True)
 
     # 1. Telemetry channels -> prepared/channels/
     # Flink ingests every file in this directory, so clear what an earlier
@@ -113,6 +130,17 @@ def main() -> int:
             continue
         n = convert_meta(src, keymap, meta_out / f"{name}.json")
         log.info("metadata %-16s -> %d rows", name, n)
+
+    # 3. The receipt. `rows` is what the readings table must hold for the load
+    # to count as complete, so tables-loaded.sh reads it here instead of
+    # counting lines across the JSON — which is ~58 GB on the medium set.
+    manifest.write_text(json.dumps({
+        "source": str(DATA_DIR),
+        "channels": len(files),
+        "rows": total,
+        "prepared_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+    }, indent=2) + "\n")
+    log.info("wrote %s (%d rows across %d channels)", manifest, total, len(files))
 
     return 0
 

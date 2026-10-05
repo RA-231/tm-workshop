@@ -11,7 +11,7 @@ tasks:
       - echo "ready — edit .env when you receive the workshop AWS credential"
 
   data:download:
-    desc: "Download the ESA dataset: task data:download -- [small|medium|full]"
+    desc: "Download the ESA dataset: task data:download -- [small|medium] (full is WIP)"
     cmds:
       - python3 scripts/fetch_esa_adb.py {{.CLI_ARGS | default "small"}}
 
@@ -43,7 +43,7 @@ tasks:
       SIZE: '{{.CLI_ARGS | default "small"}}'
     preconditions:
       - sh: '[ "{{.SIZE}}" = small ] || [ "{{.SIZE}}" = medium ]'
-        msg: "unknown size '{{.SIZE}}' — use small or medium"
+        msg: "unknown size '{{.SIZE}}' — use small or medium. 'full' is not supported yet: the three missions reuse channel names, so preparing them needs a schema change first (see the README)."
     cmds:
       - docker compose run --rm --build -e DATA_DIR=/data/{{if eq .SIZE "medium"}}medium{{else}}raw{{end}} prepare
 

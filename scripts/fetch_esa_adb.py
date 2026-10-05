@@ -13,11 +13,21 @@ Sizes (and where each lands by default):
                                   directory remotely and pull individual
                                   members.
     medium  ~3.8 GB  data/medium  all of ESA-Mission1.zip
-    full   ~11.6 GB  data/full    all three missions
+    full   ~11.6 GB  data/full    all three missions — WORK IN PROGRESS: this
+                                  downloads, but nothing downstream reads it yet
 
 Only data/raw feeds the workshop pipeline. The larger sizes land in their own
 directories so they can sit next to the small set without being ingested by
 accident; `task data:prepare -- medium` reads data/medium on purpose.
+
+data/full has no mount in the prepare service and `task data:prepare -- full`
+is rejected, so the download is currently a dead end. Preparing all three
+missions needs a schema change first: the missions reuse channel names
+(channel_41 is in all three), so prepare.py would write them onto each other.
+
+The archives are kept after extraction so a re-run skips the multi-GB transfer.
+That means medium occupies roughly twice its download size on disk, and full
+roughly twice its own.
 
 Mirror support for conference networks: set DATA_MIRROR to a base URL hosting
 esa-adb-small.tar.gz / the mission zips and everything is fetched from there
@@ -229,6 +239,12 @@ def main() -> None:
     elif size == "medium":
         fetch_mission(dest, "ESA-Mission1.zip")
     else:
+        print(
+            "WARNING: 'full' is a work in progress. The download below works, but\n"
+            "         nothing downstream can read data/full yet — there is no mount\n"
+            "         for it and `task data:prepare -- full` is rejected. See the\n"
+            "         README before spending ~11.6 GB on this.\n"
+        )
         for filename in MISSIONS:
             fetch_mission(dest, filename)
 
