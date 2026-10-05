@@ -57,29 +57,36 @@ When defining a tool:
    reduces opportunities for SQL errors; a general query tool supports more
    questions. Compare how the model uses each.
 
-## 4.3 — Start and connect the MCP server
+## 4.3 — Start and connect the MCP servers
 
-### 4.3.1 — Start the server
+### 4.3.1 — Start the servers
 
 ```bash
-# builds and starts the server, registers it in LibreChat
+# builds and starts the three MCP servers, then restarts LibreChat
 task up:mcp
 ```
 
-### 4.3.2 — Enable the server in LibreChat
+### 4.3.2 — Enable the servers in LibreChat
 
-[LibreChat](https://www.librechat.ai/) discovers the server through
+[LibreChat](https://www.librechat.ai/) discovers the servers through
 `librechat/librechat.yaml`:
 
 ```yaml
 mcpServers:
-  telemetry:
+  esa-adb:
     type: streamable-http
     url: http://mcp-server:8000/mcp
+  trino:
+    type: streamable-http
+    url: http://trino-mcp:8000/mcp
+  superset:
+    type: streamable-http
+    url: http://superset-mcp:8000/mcp
 ```
 
-Reload LibreChat (`docker compose restart librechat`), open a new chat, and
-enable the **telemetry** MCP server in the tools menu.
+`task up:mcp` has already restarted LibreChat to load them. Open a new chat,
+open the **MCP Servers** menu under the message box, and tick **esa-adb** and
+**trino**. The **superset** server is for Step 5.
 
 ## 4.4 — Query the warehouse through chat
 
