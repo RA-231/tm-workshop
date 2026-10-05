@@ -198,7 +198,24 @@ see [arXiv:2406.17826](https://arxiv.org/abs/2406.17826) for the paper.
    downloads nothing. The medium set does not go on the drive — attendees who
    want it download it after the workshop.
 
-   Copy with `COPYFILE_DISABLE=1 rsync -a data/ /Volumes/<drive>/data/`, or run
-   `dot_clean /Volumes/<drive>` once afterwards. A Finder copy to a FAT drive
-   leaves a `._channel_41.zip` sidecar beside every file; `prepare.py` skips
-   them, but they are still clutter an attendee sees on Windows and Linux.
+   Build each drive in this order — copy, lock, then clean:
+
+   ```bash
+   rsync -a data/ /Volumes/<drive>/data/
+   chflags -R uchg /Volumes/<drive>/data    # read-only; nouchg to update later
+   find /Volumes/<drive> -name '._*' -exec chflags nouchg {} \; 2>/dev/null
+   find /Volumes/<drive> -name '._*' -delete
+   ```
+
+   The lock stops an attendee deleting or overwriting the dataset by accident;
+   reading and copying off the drive still work. Clean *after* locking, because
+   `chflags` itself writes a `._*` sidecar beside every file it touches — and
+   it flags some of them, which is why they need unflagging before they can be
+   deleted. Deleting a sidecar does not unprotect its file: the lock is FAT's
+   read-only attribute, which Windows and Linux honour too.
+
+   A drive built this way stays clean through normal use, because metadata
+   cannot attach to a locked file. Finder may still leave a `.DS_Store` behind,
+   since FAT cannot lock directories — harmless, and `prepare.py` ignores it.
+   The lock also does not stop an attendee *adding* files, so re-check drives
+   between sessions.
