@@ -17,17 +17,29 @@ With an MCP server, the model can request data as it works through a question:
 
 ## 4.2 — Inspect the MCP server implementation
 
-Open [`mcp-server/server.py`](../mcp-server/server.py), which uses
-[FastMCP](https://gofastmcp.com). A minimal example:
+The warehouse tools are split across two servers, both built with
+[FastMCP](https://gofastmcp.com):
+
+- [`trino-mcp/server.py`](../trino-mcp/server.py) (**trino**) has generic
+  read-only SQL tools: `list_schemas`, `list_tables`, `describe_table`, and
+  `query`.
+- [`mcp-server/server.py`](../mcp-server/server.py) (**esa-adb**) has tools for
+  this dataset, such as `channel_summary` and `readings_around`.
+
+Open `trino-mcp/server.py`. Its `query` tool, trimmed to the essentials:
 
 ```python
 from fastmcp import FastMCP
 
-mcp = FastMCP("telemetry-trino")
+mcp = FastMCP("trino")
 
 @mcp.tool
 def query(sql: str) -> dict:
-    """Run a read-only SQL query against the telemetry warehouse. ..."""
+    """Run a read-only SQL query (SELECT/SHOW/DESCRIBE/WITH), capped at MAX_ROWS.
+
+    Fully-qualify tables as catalog.schema.table. Prefer aggregation
+    (GROUP BY, count, avg) over pulling raw rows.
+    """
     ...
 
 mcp.run(transport="http", host="0.0.0.0", port=8000)
@@ -40,10 +52,10 @@ When defining a tool:
 2. **Describe its intended use.** The model reads the docstring to decide when
    and how to call your tool. `query`'s docstring tells the model to aggregate rather
    than pull raw rows. Check how it uses that guidance.
-3. **Choose the scope.** `channel_summary` runs a fixed SQL statement, while
-   `query` lets the model write SQL. A fixed query reduces opportunities for
-   SQL errors; a general query tool supports more questions. Compare how the
-   model uses each.
+3. **Choose the scope.** esa-adb's `channel_summary` runs a fixed SQL
+   statement, while trino's `query` lets the model write SQL. A fixed query
+   reduces opportunities for SQL errors; a general query tool supports more
+   questions. Compare how the model uses each.
 
 ## 4.3 — Start and connect the MCP server
 
@@ -103,8 +115,10 @@ an anomaly: what did the channel do in the hour around it?
 
 ### 4.5.3 — Review the query restrictions
 
-Read the read-only check in `query` and consider what else a production server
-would need, such as row-level authorization, query timeouts, and cost caps.
+Read the read-only check in `query` in
+[`trino-mcp/server.py`](../trino-mcp/server.py) and consider what else a
+production server would need, such as row-level authorization, query timeouts,
+and cost caps.
 
 ## 4.6 — Additional MCP uses (optional)
 
