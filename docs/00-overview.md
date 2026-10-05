@@ -111,13 +111,14 @@ If your instructor gave you a USB drive, copy its `data` folder into the
 repository directory first. It holds the dataset and the checkpoints, and the
 download below then finds the dataset and fetches nothing.
 
-On the conference network, set `DATA_MIRROR=<url>` in `.env` using the URL from
-your instructor. Then run:
-
 ```bash
 # ~150 MB workshop subset of the ESA dataset
 task data:download
 ```
+
+The download takes a few minutes over conference Wi-Fi. You do not have to wait
+for it: open a second terminal, run `task up:docs` from 0.4.4 below, and read
+this overview while the dataset arrives. The guide needs no data.
 
 ### 0.4.4 — Open the workshop guide
 

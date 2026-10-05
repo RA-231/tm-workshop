@@ -43,7 +43,8 @@ task setup
 # ~150 MB workshop subset of the ESA dataset
 # (nothing to download if you copied data/ from the workshop USB drive)
 task data:download
-# service links + these docs at :4321
+# service links + these docs at :4321 — start this in a second terminal
+# while the download runs; it needs no dataset
 task up:docs
 ```
 
@@ -166,9 +167,8 @@ Flink SQL and the Trino views. Tracked in
 If you have the workshop USB drive, copy its `data` folder into the project
 folder; it holds the small set and the checkpoints.
 
-On the conference network, set `DATA_MIRROR=<url>` in `.env` to fetch from the
-local mirror instead of Zenodo. The full ESA download is ~11.6 GB; the small
-subset pulls just seven channels (plus the metadata) via HTTP range requests.
+The full ESA download is ~11.6 GB; the small subset pulls just seven channels
+(plus the metadata) via HTTP range requests, straight from Zenodo.
 
 The ESA Anomaly Dataset is © ESA, licensed
 [CC BY 3.0 IGO](https://creativecommons.org/licenses/by/3.0/igo/) —
@@ -183,8 +183,9 @@ see [arXiv:2406.17826](https://arxiv.org/abs/2406.17826) for the paper.
    slide, and a timer; `o` is the overview grid for jumping around.
 2. `task checkpoint:save -- <name>` after finishing each step during prep. Run
    `docker compose stop` first so the snapshot is consistent. Checkpoints are
-   saved to `data/checkpoints/`; host that directory on the mirror and set
-   `CHECKPOINT_BASE_URL` so `checkpoint:restore` can fetch it. A checkpoint
+   saved to `data/checkpoints/` and travel on the USB drives. If you do host
+   them somewhere, set `CHECKPOINT_BASE_URL` and `checkpoint:restore` will fetch
+   from there instead. A checkpoint
    captures the Garage volumes and the Polaris Postgres volume together, so a
    restore is complete.
 3. The gateway discovers the models available to the workshop key each time it
