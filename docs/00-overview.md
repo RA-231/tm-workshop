@@ -84,8 +84,8 @@ about 58 GB, so the workshop itself always uses the small set.
 
 All three missions (`task data:download -- full`) will download, but preparing
 them is still work in progress — the missions reuse the same channel names, so
-the pipeline needs a schema change before it can tell them apart. The README
-says what is missing.
+each one needs its own catalog before the pipeline can tell them apart. The
+README says what is missing.
 
 ## 0.4 — Set up your laptop
 
