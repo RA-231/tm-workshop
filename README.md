@@ -155,12 +155,12 @@ small set.
 
 **full — work in progress, not yet supported.** The download works and lands in
 `data/full`, but nothing downstream can read it: `data/full` has no mount in the
-`prepare` service, and `task data:prepare -- full` is rejected. Preparing all
-three missions needs a schema change first, because the missions reuse the same
-channel names — `channel_41` exists in all three — so today they would overwrite
-each other. Supporting it means carrying a mission identifier through
-`prepare.py`, the Iceberg schema and the Trino views, then adding the mount and
-allowing the size. Tracked in
+`prepare` service, and `task data:prepare -- full` is rejected. The missions
+reuse the same channel names — `channel_41` exists in all three and means a
+different signal in each — so today they would overwrite each other. Supporting
+them means giving each mission its own catalog, which is the data boundary a
+separate mission warrants, and following that through the prepared layout, the
+Flink SQL and the Trino views. Tracked in
 [#5](https://github.com/RA-231/tm-workshop/issues/5).
 
 If you have the workshop USB drive, copy its `data` folder into the project
