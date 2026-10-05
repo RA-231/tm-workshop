@@ -126,8 +126,10 @@ comparison, a phase+duration explanation, the chart URL, and your confidence.
 
 ### 5.4.5 — Enable the MCP tools
 
-Under **Tools → Add Tools**, enable the **esa-adb**, **trino**, and **superset**
-MCP servers. Each appears as one entry you can expand to toggle individual tools.
+Under **MCP Servers**, select **Add MCP Server Tools**, then select **Add** on
+**esa-adb**, **trino**, and **superset**. Each appears as one entry you can
+expand to toggle individual tools. The **Tools → Add Tools** button opens
+LibreChat's built-in tools (Google, Wolfram, and others), not the MCP servers.
 
 ### 5.4.6 — Save and share the agent
 
