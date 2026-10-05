@@ -77,8 +77,8 @@ compare findings with the labels. On the known Mar-2000 event, look for the
 
 ## Planned additions
 
-- `stl_residual` — seasonal-trend decomposition residual scoring.
-- `cadence` — telecommand/sample regularity drift.
-- `cross_channel_correlation` — lagged decorrelation vs siblings.
-- Optional: a self-hosted Code Interpreter (co-located with Trino) for the agent
-  to write additional detectors.
+1. `stl_residual` — seasonal-trend decomposition residual scoring.
+2. `cadence` — telecommand/sample regularity drift.
+3. `cross_channel_correlation` — lagged decorrelation vs siblings.
+4. Optional: a self-hosted Code Interpreter (co-located with Trino) for the agent
+   to write additional detectors.

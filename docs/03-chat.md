@@ -1,17 +1,19 @@
 # Step 3 — Chat with LibreChat and LiteLLM
 
-This step connects LibreChat to the model provider through LiteLLM. In Step 4,
-we'll add tools for querying the telemetry warehouse.
+This step connects [LibreChat](https://www.librechat.ai/) to the model provider
+through [LiteLLM](https://www.litellm.ai/). In Step 4, we'll add tools for
+querying the telemetry warehouse.
 
 ## 3.1 — Chat services and the workshop key
 
-- **LibreChat** — an open source chat UI with multi-user support, connections
-  to multiple model providers, and MCP support.
-- **LiteLLM** — an LLM gateway: one OpenAI-compatible HTTP API in front of
-  100+ providers.
-- **The key on your card** — scoped to the workshop's model project and nothing
-  else, and it expires at the end of the day. It reaches a handful of models;
-  `task llm:check` prints exactly which.
+1. **LibreChat** — an open source chat UI with multi-user support, connections
+   to multiple model providers, and [MCP](https://modelcontextprotocol.io/)
+   support.
+2. **LiteLLM** — an LLM gateway: one OpenAI-compatible HTTP API in front of
+   100+ providers.
+3. **The key on your card** — scoped to the workshop's model project and nothing
+   else, and it expires at the end of the day. It reaches a handful of models;
+   `task llm:check` prints exactly which.
 
 ## 3.2 — Gateway controls in LiteLLM
 
@@ -60,7 +62,8 @@ task llm:check
 ### 3.3.3 — Start the chat services
 
 ```bash
-task up:chat     # postgres, litellm, mongodb, librechat
+# postgres, litellm, mongodb, librechat
+task up:chat
 ```
 
 ### 3.3.4 — Create a local LibreChat account

@@ -1,13 +1,14 @@
 # Step 1 — Ingesting Data into Iceberg with Flink
 
-Load raw ESA telemetry files into an Iceberg table with Flink. This step
-explains how the table format stores data and how the catalog tracks it.
+Load raw ESA telemetry files into an [Iceberg](https://iceberg.apache.org/)
+table with [Flink](https://flink.apache.org/). This step explains how the table
+format stores data and how the catalog tracks it.
 
 ## 1.1 — Iceberg table layout
 
 Iceberg is a table format that tracks data files and their metadata.
 A table is a set of objects in the warehouse — here, the `warehouse` bucket in
-Garage:
+[Garage](https://garagehq.deuxfleurs.fr/):
 
 ```
 s3://warehouse/esa_adb/readings/
@@ -22,9 +23,10 @@ s3://warehouse/esa_adb/readings/
 
 To read a table, an engine finds the current `metadata.json`, follows it to a
 snapshot and its manifests, then reads the data files that match the query's
-filters. To write, it creates new Parquet files and metadata, then atomically
-updates the pointer to the current metadata. This update commits the write;
-readers continue to see the previous snapshot until it completes.
+filters. To write, it creates new
+[Parquet](https://parquet.apache.org/docs/overview/) files and metadata, then
+atomically updates the pointer to the current metadata. This update commits the
+write; readers continue to see the previous snapshot until it completes.
 
 This supports two important operations:
 
@@ -35,12 +37,14 @@ This supports two important operations:
 
 ## 1.2 — The Polaris catalog
 
-Polaris is an implementation of the **Iceberg REST catalog** protocol. It's
-the service that maps `esa_adb.readings` → "current
-metadata file is `v3.metadata.json`" and performs the atomic swap on commit.
+[Polaris](https://polaris.apache.org/) is an implementation of the **Iceberg
+REST catalog** protocol. It's the service that maps `esa_adb.readings` →
+"current metadata file is `v3.metadata.json`" and performs the atomic swap on
+commit.
 
-Because Flink (writer) and Trino (reader, Step 2) both speak the REST catalog
-protocol to the same Polaris instance, they use the same table metadata.
+Because Flink (writer) and [Trino](https://trino.io/) (reader, Step 2) both
+speak the REST catalog protocol to the same Polaris instance, they use the same
+table metadata.
 The catalog coordinates access without requiring Flink and Trino to
 communicate directly.
 
@@ -75,38 +79,42 @@ views and Step 4's anomaly investigation use these tables.
 ### 1.4.1 — Start the ingestion services
 
 ```bash
-task up:ingest        # setup garage, polaris, flink — init S3 bucket
+# setup garage, polaris, flink — init S3 bucket
+task up:ingest
 ```
 
 ### 1.4.2 — Prepare the telemetry files
 
 ```bash
-task data:prepare     # pickled channels -> JSON under data/prepared/
+# pickled channels -> JSON under data/prepared/
+task data:prepare
 ```
 
 ### 1.4.3 — Create the Polaris catalog
 
 ```bash
-task catalog:create   # create the 'workshop' catalog in Polaris
+# create the 'workshop' catalog in Polaris
+task catalog:create
 ```
 
 ### 1.4.4 — Load the Iceberg tables
 
 ```bash
-task flink:job        # run the ingest job (Flink SQL) — blocks until loaded
+# run the ingest job (Flink SQL) — blocks until loaded
+task flink:job
 ```
 
 ### 1.4.5 — Inspect the running job and warehouse
 
 While `flink:job` runs:
 
-- **Flink UI** [http://localhost:8081](http://localhost:8081) — watch the job
-  read the files and write to the sink, one snapshot per checkpoint.
-- **Look at the objects.** The metadata and Parquet files land in Garage:
+1. **Flink UI** [http://localhost:8081](http://localhost:8081) — watch the job
+   read the files and write to the sink, one snapshot per checkpoint.
+2. **Look at the objects.** The metadata and Parquet files land in Garage:
 
-  ```bash
-  docker compose exec garage /garage bucket info warehouse
-  ```
+   ```bash
+   docker compose exec garage /garage bucket info warehouse
+   ```
 
 ## 1.5 — Inspect the ingest SQL
 

@@ -1,17 +1,19 @@
 # Step 4 — Build an MCP Server for Trino
 
 We have a telemetry warehouse and a chat UI connected to a model. This step
-adds query tools using the Model Context Protocol (MCP), a standard for
-exposing tools to clients. Tools are functions with typed inputs and outputs.
+adds query tools using the
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/), a standard
+for exposing tools to clients. Tools are functions with typed inputs and
+outputs.
 
 ## 4.1 — Tool operations and query restrictions
 
 With an MCP server, the model can request data as it works through a question:
 
-- The model selects tools to list tables, inspect schemas, and run queries.
-  It can use the results to revise a query or choose another tool.
-- The server restricts queries to read-only statements and caps result sizes.
-  Its query check rejects statements such as `DROP TABLE`.
+1. The model selects tools to list tables, inspect schemas, and run queries.
+   It can use the results to revise a query or choose another tool.
+2. The server restricts queries to read-only statements and caps result sizes.
+   Its query check rejects statements such as `DROP TABLE`.
 
 ## 4.2 — Inspect the MCP server implementation
 
@@ -48,12 +50,14 @@ When defining a tool:
 ### 4.3.1 — Start the server
 
 ```bash
-task up:mcp        # builds and starts the server, registers it in LibreChat
+# builds and starts the server, registers it in LibreChat
+task up:mcp
 ```
 
 ### 4.3.2 — Enable the server in LibreChat
 
-LibreChat discovers the server through `librechat/librechat.yaml`:
+[LibreChat](https://www.librechat.ai/) discovers the server through
+`librechat/librechat.yaml`:
 
 ```yaml
 mcpServers:
@@ -69,15 +73,15 @@ enable the **telemetry** MCP server in the tools menu.
 
 Ask the model things that require multi-step tool use:
 
-- *"What tables and views are available, and what does the readings table
-  look like?"*
-- *"Summarize channel_41. Anything unusual about its value range?"*
-- *"Which channel has the most samples in March 2000? Show a monthly count
-  for that channel across the whole year."*
-- *"Using labeled_readings, how many anomaly windows does channel_41 have, and
-  what's the average value inside anomalies vs outside?"*
-- *"Pick one labeled anomaly on channel_41 and show me the readings in the hour
-  around it."*
+1. *"What tables and views are available, and what does the readings table
+   look like?"*
+2. *"Summarize channel_41. Anything unusual about its value range?"*
+3. *"Which channel has the most samples in March 2000? Show a monthly count
+   for that channel across the whole year."*
+4. *"Using labeled_readings, how many anomaly windows does channel_41 have, and
+   what's the average value inside anomalies vs outside?"*
+5. *"Pick one labeled anomaly on channel_41 and show me the readings in the hour
+   around it."*
 
 Watch the tool-call panel in LibreChat: you'll see the model list tables,
 describe schemas, and revise SQL. Inspect the queries and their results.
@@ -104,8 +108,8 @@ would need, such as row-level authorization, query timeouts, and cost caps.
 
 ## 4.6 — Additional MCP uses (optional)
 
-- Point the MCP server at your own mission's data lake.
-- Add MCP **resources** (read-only context like schema docs) and **prompts**
-  (reusable analysis workflows). FastMCP supports both.
-- Run the same server against Claude Desktop, Claude Code, or any other MCP
-  client.
+1. Point the MCP server at your own mission's data lake.
+2. Add MCP **resources** (read-only context like schema docs) and **prompts**
+   (reusable analysis workflows). FastMCP supports both.
+3. Run the same server against Claude Desktop, Claude Code, or any other MCP
+   client.

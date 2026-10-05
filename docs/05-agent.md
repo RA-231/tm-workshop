@@ -1,9 +1,10 @@
 # Step 5 — A Telemetry Analysis Agent
 
 We have a lakehouse (Steps 1–2), a chat UI connected to the gateway (Step 3),
-and query tools exposed through MCP (Step 4). Now we'll configure a
-**LibreChat Agent** with tools to explore telemetry, score possible anomalies,
-and create charts. The model selects tools as it works through an investigation.
+and query tools exposed through [MCP](https://modelcontextprotocol.io/) (Step
+4). Now we'll configure a **[LibreChat](https://www.librechat.ai/) Agent** with
+tools to explore telemetry, score possible anomalies, and create charts. The
+model selects tools as it works through an investigation.
 
 ## 5.1 — Analysis agent architecture
 
@@ -37,7 +38,8 @@ The agent receives tools from all three servers.
 ## 5.2 — Start the three MCP servers
 
 ```bash
-task up:mcp        # builds + starts esa-adb, trino, superset MCP servers; reloads LibreChat
+# builds + starts esa-adb, trino, superset MCP servers; reloads LibreChat
+task up:mcp
 ```
 
 LibreChat is already configured to see all three (see
@@ -158,12 +160,12 @@ change provides evidence that the value alone does not.
 
 The `esa-adb` server exposes MCP tools, resources, and prompts:
 
-- **Tools** — callable functions for detection and telemetry navigation.
-- **Resources** — read-only reference context: `about://dataset` (the
-  anonymization briefing), `schema://esa_adb` (data dictionary),
-  `catalog://channels` (the channel catalog).
-- **Prompts** — reusable, parameterized workflows: `investigate_channel(channel)`,
-  `triage_window(channel, start, end)`.
+1. **Tools** — callable functions for detection and telemetry navigation.
+2. **Resources** — read-only reference context: `about://dataset` (the
+   anonymization briefing), `schema://esa_adb` (data dictionary),
+   `catalog://channels` (the channel catalog).
+3. **Prompts** — reusable, parameterized workflows: `investigate_channel(channel)`,
+   `triage_window(channel, start, end)`.
 
 **Client caveat:** LibreChat v0.8.7 consumes **tools only** — it ignores resources
 and prompts. Connect a client that supports resources and prompts, such as
@@ -179,8 +181,9 @@ anomaly_overlay_chart("channel_41")
   → { "url": "http://localhost:8088/explore/?slice_id=1" }
 ```
 
-Behind that one call the server logs into Superset, registers the
-`labeled_readings` view as a dataset, and constructs the
+Behind that one call the server logs into
+[Superset](https://superset.apache.org/), registers the `labeled_readings` view
+as a dataset, and constructs the
 `params`/`query_context` for a time-series line split by `is_anomaly`. The agent
 uses the chart tool without constructing Superset API payloads.
 
@@ -198,20 +201,20 @@ finally `anomalies_for` to compare its findings with the labels.
 
 ## 5.9 — Troubleshoot LibreChat (v0.8.7)
 
-- **Resources/prompts** aren't surfaced by LibreChat; use Claude
-  Desktop/Code to see them.
-- **Tool-calling** must be validated per model; if a
-  model emits malformed calls, try `dropParams` on the custom endpoint or switch
-  models. Use `workshop-default` for the workshop exercises.
-- **Agent sharing** uses **Share**; v0.8.7 has no API to create an agent.
-- If the tool list looks truncated, note v0.8.7 paginates `tools/list` with an
-  aggregate budget — 19 tools across three servers is well within it.
+1. **Resources/prompts** aren't surfaced by LibreChat; use Claude
+   Desktop/Code to see them.
+2. **Tool-calling** must be validated per model; if a
+   model emits malformed calls, try `dropParams` on the custom endpoint or switch
+   models. Use `workshop-default` for the workshop exercises.
+3. **Agent sharing** uses **Share**; v0.8.7 has no API to create an agent.
+4. If the tool list looks truncated, note v0.8.7 paginates `tools/list` with an
+   aggregate budget — 19 tools across three servers is well within it.
 
 ## 5.10 — Extend the agent (optional)
 
-- Configure `trino-mcp` for another dataset and add a server with detectors
-  suited to that data.
-- Extend `superset-mcp` with more chart types, or configure the agent to build an
-  investigation dashboard.
-- Add MCP **elicitation**/**sampling**, or run the same servers against Claude
-  Desktop / Claude Code.
+1. Configure `trino-mcp` for another dataset and add a server with detectors
+   suited to that data.
+2. Extend `superset-mcp` with more chart types, or configure the agent to build an
+   investigation dashboard.
+3. Add MCP **elicitation**/**sampling**, or run the same servers against Claude
+   Desktop / Claude Code.

@@ -42,23 +42,29 @@ the telemetry files**, along with the command or screen and any error message.
 ## 0.2 — Workshop sequence
 
 **Ingesting data with Flink (Step 1).**
-Apache Flink reads the telemetry files and writes them into **Apache
-Iceberg**, an open table format that manages Parquet files in object storage
-with a schema, snapshots, and time travel. The files
-live in **Garage**, a lightweight S3-compatible object store, and **Apache
-Polaris** is the catalog: it tracks tables and the location of their current
-metadata.
+**[Apache Flink](https://flink.apache.org/)** reads the telemetry files and
+writes them into **[Apache Iceberg](https://iceberg.apache.org/)**, an open
+table format that manages [Parquet](https://parquet.apache.org/docs/overview/)
+files in object storage with a schema, snapshots, and time travel. The files
+live in **[Garage](https://garagehq.deuxfleurs.fr/)**, a lightweight
+S3-compatible object store, and
+**[Apache Polaris](https://polaris.apache.org/)** is the catalog: it tracks
+tables and the location of their current metadata.
 
 **Querying data with Trino (Step 2).**
-**Trino** is a distributed SQL engine that reads Iceberg natively. Anything
-that connects to Trino can analyze the telemetry. We'll use **Apache Superset**
-to build charts and inspect Trino's query planner to understand how
-Iceberg's metadata makes queries fast (partition pruning, file skipping).
+**[Trino](https://trino.io/)** is a distributed SQL engine that reads Iceberg
+natively. Anything that connects to Trino can analyze the telemetry. We'll use
+**[Apache Superset](https://superset.apache.org/)** to build charts and inspect
+Trino's query planner to understand how Iceberg's metadata makes queries fast
+(partition pruning, file skipping).
 
 **Analyzing data with MCP tools (Steps 3–5).**
-The **Model Context Protocol (MCP)** exposes tools to an LLM client. We'll run
-**LibreChat** as the chat UI, route model calls through **LiteLLM** to the model
-provider, and build an MCP server with **FastMCP** for querying the warehouse.
+The **[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)**
+exposes tools to an LLM client. We'll run
+**[LibreChat](https://www.librechat.ai/)** as the chat UI, route model calls
+through **[LiteLLM](https://www.litellm.ai/)** to the model provider, and build
+an MCP server with **[FastMCP](https://gofastmcp.com)** for querying the
+warehouse.
 In Step 5, we'll combine query, anomaly-detection, and charting tools in an agent.
 
 ## 0.3 — The ESA dataset
@@ -79,16 +85,18 @@ full mission at home
 
 ### 0.4.1 — Check prerequisites
 
-You need Docker with Compose v2, [Task](https://taskfile.dev), about 8 GB of RAM
-available to Docker, and a few GB of free disk space. Steps 3–5 also need the
-workshop model key handed out by your instructor.
+You need [Docker](https://docs.docker.com/get-started/docker-overview/) with
+[Compose v2](https://docs.docker.com/compose/), [Task](https://taskfile.dev),
+about 8 GB of RAM available to Docker, and a few GB of free disk space. Steps
+3–5 also need the workshop model key handed out by your instructor.
 
 ### 0.4.2 — Create the local configuration
 
 From the repository directory, run:
 
 ```bash
-task setup            # creates .env from the template + local data dirs
+# creates .env from the template + local data dirs
+task setup
 ```
 
 ### 0.4.3 — Download the workshop dataset
@@ -97,13 +105,15 @@ On the conference network, set `DATA_MIRROR=<url>` in `.env` using the URL from
 your instructor. Then run:
 
 ```bash
-task data:download    # ~150 MB workshop subset of the ESA dataset
+# ~150 MB workshop subset of the ESA dataset
+task data:download
 ```
 
 ### 0.4.4 — Open the workshop guide
 
 ```bash
-task up:docs          # service links + these docs at :4321
+# service links + these docs at :4321
+task up:docs
 ```
 
 Open [http://localhost:4321](http://localhost:4321). The service links become
@@ -111,11 +121,11 @@ available as you start each step's services.
 
 ## 0.5 — Running services and restoring a checkpoint
 
-- `task up` starts the services in Docker Compose.
-- The stack uses simplified authentication for local workshop use.
-- To skip the ingest, use `task checkpoint:restore -- <name>` to restore a
-  pre-built warehouse, including the Iceberg files and the Polaris catalog.
-  Your instructor will provide the checkpoint names.
+1. `task up` starts the services in Docker Compose.
+2. The stack uses simplified authentication for local workshop use.
+3. To skip the ingest, use `task checkpoint:restore -- <name>` to restore a
+   pre-built warehouse, including the Iceberg files and the Polaris catalog.
+   Your instructor will provide the checkpoint names.
 
 ## 0.6 — Resolve a host-port conflict
 

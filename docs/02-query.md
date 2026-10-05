@@ -1,22 +1,26 @@
 # Step 2 — Querying Data with Trino and Superset
 
-Flink wrote our telemetry into Iceberg. We can query those tables with another
-engine that supports the format. We'll use Trino interactively, inspect its
-query plans, then connect Superset to it.
+[Flink](https://flink.apache.org/) wrote our telemetry into
+[Iceberg](https://iceberg.apache.org/). We can query those tables with another
+engine that supports the format. We'll use [Trino](https://trino.io/)
+interactively, inspect its query plans, then connect
+[Superset](https://superset.apache.org/) to it.
 
 ## 2.1 — Query the tables with Trino
 
 Trino is a distributed SQL query engine that reads data from external storage.
 Its catalogs contain connectors and configuration, and it can query across
-them. Our `iceberg` catalog points at the same Polaris REST catalog Flink writes to:
-Trino requests the current metadata location for `esa_adb.readings` from
-Polaris and uses that metadata to plan the query. Both engines use Polaris
-to locate the table's current state.
+them. Our `iceberg` catalog points at the same
+[Polaris](https://polaris.apache.org/) REST catalog Flink writes to: Trino
+requests the current metadata location for `esa_adb.readings` from Polaris and
+uses that metadata to plan the query. Both engines use Polaris to locate the
+table's current state.
 
 ### 2.1.1 — Open the Trino CLI
 
 ```bash
-task trino          # opens the Trino CLI
+# opens the Trino CLI
+task trino
 ```
 
 ### 2.1.2 — Run the first queries
@@ -50,8 +54,9 @@ WHERE ts_month = '2000-03';
 Look for the estimated rows on the table scan, then widen the filter (e.g.
 `ts_month BETWEEN '2000-03' AND '2000-09'`) and `EXPLAIN` again. The scan size
 tracks the filter because Trino consults Iceberg's metadata to **prune
-partitions and skip files** before reading a single byte of Parquet. Filtering
-on `ts` directly works too — Iceberg's column statistics still skip files —
+partitions and skip files** before reading a single byte of
+[Parquet](https://parquet.apache.org/docs/overview/). Filtering on `ts`
+directly works too — Iceberg's column statistics still skip files —
 but a `ts_month` filter prunes whole partitions outright. Run the queries
 (without `EXPLAIN`) and compare wall-clock times; then check the query detail
 in the Trino UI at [http://localhost:8080/ui/](http://localhost:8080/ui/) to
@@ -82,12 +87,14 @@ provenance columns describing where each row came from (`source_file`,
 section in [Step 1](01-ingest.md)). Step 1 also loaded
 three dimension tables: `channels` (what each channel measures), `labels` (the
 ESA-labeled anomaly windows), and `anomaly_types` (the taxonomy). Views define
-these joins for reuse in SQL Lab, Superset, and the Step 4 MCP server.
+these joins for reuse in SQL Lab, Superset, and the Step 4
+[MCP](https://modelcontextprotocol.io/) server.
 
 ### 2.3.1 — Create the views
 
 ```bash
-task trino:views    # creates the views below
+# creates the views below
+task trino:views
 ```
 
 ### 2.3.2 — Query enriched readings and anomaly labels
@@ -120,7 +127,8 @@ match `readings.ts`.
 ### 2.4.1 — Start the query services
 
 ```bash
-task up:query    # starts Trino + Superset — http://localhost:8088 (admin / admin)
+# starts Trino + Superset — http://localhost:8088 (admin / admin)
+task up:query
 ```
 
 The stack registers the Trino connection (SQLAlchemy URI

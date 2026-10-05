@@ -16,12 +16,17 @@ and credentials are supplied externally.
 ## Before the workshop
 
 ```bash
-export LLM_ADMIN_KEY=$(secret get OPEN_AI_ADMIN_KEY)   # an sk-admin-... key
-export LLM_PROJECT_NAME="Space Software Summit"        # or LLM_PROJECT_ID
+# an sk-admin-... key
+export LLM_ADMIN_KEY=$(secret get OPEN_AI_ADMIN_KEY)
+# or LLM_PROJECT_ID
+export LLM_PROJECT_NAME="Space Software Summit"
 
-./list-models.sh                             # confirm available models
-./mint-attendee-keys.sh --seats 50           # writes attendee-keys.csv (0600)
-./make-handouts.py                           # writes handouts/ (0700)
+# confirm available models
+./list-models.sh
+# writes attendee-keys.csv (0600)
+./mint-attendee-keys.sh --seats 50
+# writes handouts/ (0700)
+./make-handouts.py
 ```
 
 `attendee-keys.csv` and `handouts/` hold live credentials, are created mode
@@ -59,13 +64,13 @@ for the one-off case (a key posted in a public channel), not routine cleanup.
 **Spend control is the project's monthly hard limit**, set in the dashboard —
 there is no API for it:
 
-- It is **shared across all 50 seats**. One attendee looping requests will
-  exhaust it and every other seat starts getting `429
-  project_spend_limit_exceeded`.
-- There is **no per-key spend limit** at this provider — limits exist at
-  organization and project scope only. Per-key *usage* is visible in the
-  dashboard (grouped by the `tmws-NN` service-account name), so you can see who
-  spent what after the fact, and act on it manually.
+1. It is **shared across all 50 seats**. One attendee looping requests will
+   exhaust it and every other seat starts getting `429
+   project_spend_limit_exceeded`.
+2. There is **no per-key spend limit** at this provider — limits exist at
+   organization and project scope only. Per-key *usage* is visible in the
+   dashboard (grouped by the `tmws-NN` service-account name), so you can see who
+   spent what after the fact, and act on it manually.
 
 Attendees can set a per-key budget in LiteLLM using `/key/generate` with
 `max_budget`, as described in Step 3. This controls their local usage; it does
@@ -84,17 +89,17 @@ project's per-model limits were lowered from the defaults on 2026-10-01:
 Sizing is driven by the AI segment being ~40 minutes, so usage is dense rather
 than spread across a day:
 
-- Expected: 50 attendees x ~15 turns. At chat-weight turns (~1.5k tokens) that
-  is ~1.1M tokens (~$13); at agent turns carrying MCP tool results (~8k tokens)
-  it is ~6M (~$72).
-- Worst case, everything saturated for the full 40 minutes: ~$577. That sits
-  just above the project's $500 monthly hard limit, so the limit is the
-  spending cap. The rate limits constrain throughput during bursts.
-- `chat-latest` has a higher limit because `workshop-default` points at it and it
-  is the only model that drives tools on this path. A synchronised Step 5 burst
-  ("everyone run the agent now") is ~50 x 8k = 400k tokens in one minute, which
-  200k TPM would have throttled. Its RPM is higher too: an agent turn is several
-  API calls, one per tool round trip, not one.
+1. Expected: 50 attendees x ~15 turns. At chat-weight turns (~1.5k tokens) that
+   is ~1.1M tokens (~$13); at agent turns carrying MCP tool results (~8k tokens)
+   it is ~6M (~$72).
+2. Worst case, everything saturated for the full 40 minutes: ~$577. That sits
+   just above the project's $500 monthly hard limit, so the limit is the
+   spending cap. The rate limits constrain throughput during bursts.
+3. `chat-latest` has a higher limit because `workshop-default` points at it and it
+   is the only model that drives tools on this path. A synchronised Step 5 burst
+   ("everyone run the agent now") is ~50 x 8k = 400k tokens in one minute, which
+   200k TPM would have throttled. Its RPM is higher too: an agent turn is several
+   API calls, one per tool round trip, not one.
 
 If requests are throttled during the dry run, review the limits. Changes apply
 per project and take effect immediately.
