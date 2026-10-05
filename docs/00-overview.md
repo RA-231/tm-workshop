@@ -77,9 +77,10 @@ anomalies.
 The full download is ~11.6 GB (three mission archives). For the workshop we
 use a ~150 MB subset — Mission1's metadata plus seven channels, pulled
 from the archive with HTTP range requests (see `task data:download`). The subset
-uses the same schema as the full dataset. You can also run each step against a
-full mission at home
-(`task data:download -- medium`).
+uses the same schema as the full dataset. You can also run each step against
+all of Mission1 at home: `task data:download -- medium` puts it in
+`data/medium`, and `task data:prepare -- medium` prepares it. Prepared, it is
+about 58 GB, so the workshop itself always uses the small set.
 
 ## 0.4 — Set up your laptop
 
@@ -100,6 +101,10 @@ task setup
 ```
 
 ### 0.4.3 — Download the workshop dataset
+
+If your instructor gave you a USB drive, copy its `data` folder into the
+repository directory first. It holds the dataset and the checkpoints, and the
+download below then finds the dataset and fetches nothing.
 
 On the conference network, set `DATA_MIRROR=<url>` in `.env` using the URL from
 your instructor. Then run:

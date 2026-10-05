@@ -36,9 +36,16 @@ tasks:
       - bash scripts/init-garage.sh
 
   data:prepare:
-    desc: Convert the pickled ESA channels into JSON for Flink to read
+    desc: "Convert the pickled ESA channels into JSON for Flink: task data:prepare -- [small|medium]"
+    # The workshop uses small (data/raw). Medium (data/medium) is opt-in only:
+    # ~58 GB of JSON and ~30 minutes here, then hours to load.
+    vars:
+      SIZE: '{{.CLI_ARGS | default "small"}}'
+    preconditions:
+      - sh: '[ "{{.SIZE}}" = small ] || [ "{{.SIZE}}" = medium ]'
+        msg: "unknown size '{{.SIZE}}' — use small or medium"
     cmds:
-      - docker compose run --rm --build prepare
+      - docker compose run --rm --build -e DATA_DIR=/data/{{if eq .SIZE "medium"}}medium{{else}}raw{{end}} prepare
 
   catalog:create:
     desc: Create the 'workshop' catalog in Polaris

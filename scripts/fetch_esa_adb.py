@@ -4,14 +4,20 @@
 Dataset: https://zenodo.org/records/15237121  (CC BY 3.0 IGO, ~11.6 GB total)
 Paper:   https://arxiv.org/abs/2406.17826
 
-Sizes:
-    small   ~150 MB — Mission1 metadata + 7 selected channels, fetched with
-                      HTTP range requests (no full-archive download!). The
-                      channel files are STORED (uncompressed) inside the
-                      mission zip, so we can read the zip's central directory
-                      remotely and pull individual members.
-    medium  ~3.8 GB — all of ESA-Mission1.zip
-    full   ~11.6 GB — all three missions
+Sizes (and where each lands by default):
+    small   ~150 MB  data/raw     Mission1 metadata + 7 selected channels,
+                                  fetched with HTTP range requests (no
+                                  full-archive download!). The channel files
+                                  are STORED (uncompressed) inside the mission
+                                  zip, so we can read the zip's central
+                                  directory remotely and pull individual
+                                  members.
+    medium  ~3.8 GB  data/medium  all of ESA-Mission1.zip
+    full   ~11.6 GB  data/full    all three missions
+
+Only data/raw feeds the workshop pipeline. The larger sizes land in their own
+directories so they can sit next to the small set without being ingested by
+accident; `task data:prepare -- medium` reads data/medium on purpose.
 
 Mirror support for conference networks: set DATA_MIRROR to a base URL hosting
 esa-adb-small.tar.gz / the mission zips and everything is fetched from there
@@ -46,6 +52,9 @@ SMALL_CHANNELS = ["61", "62", "63", "9", "10", "11", "41"]
 SMALL_METADATA = ["channels.csv", "labels.csv", "anomaly_types.csv", "telecommands.csv"]
 
 MIRROR = os.environ.get("DATA_MIRROR", "").rstrip("/")
+
+# Only data/raw is read by the default `task data:prepare`.
+DEST = {"small": Path("data/raw"), "medium": Path("data/medium"), "full": Path("data/full")}
 
 
 def zenodo_url(filename: str) -> str:
@@ -102,7 +111,10 @@ def central_directory(url: str, total: int) -> dict:
 
 
 def extract_member(url: str, entries: dict, name: str, out: Path) -> None:
-    """Fetch one zip member by range request and write it decompressed."""
+    """Fetch one zip member by range request and write it decompressed.
+
+    Written via a .part file, so a file under the final name is always
+    complete — fetch_small relies on that to skip what is already there."""
     method, crc, csize, usize, lho = entries[name]
     header = get_range(url, lho, lho + 29)
     fnlen, eflen = struct.unpack("<HH", header[26:30])
@@ -110,14 +122,16 @@ def extract_member(url: str, entries: dict, name: str, out: Path) -> None:
     data = get_range(url, data_start, data_start + csize - 1)
 
     out.parent.mkdir(parents=True, exist_ok=True)
+    part = out.with_name(out.name + ".part")
     if method == 0:  # stored
-        out.write_bytes(data)
+        part.write_bytes(data)
     elif method == 8:  # deflate
-        out.write_bytes(zlib.decompress(data, -15))
+        part.write_bytes(zlib.decompress(data, -15))
     elif method == 9:  # deflate64 — python can't; wrap it and let `unzip` do it
-        unzip_deflate64(name, method, crc, csize, usize, data, out)
+        unzip_deflate64(name, method, crc, csize, usize, data, part)
     else:
         raise RuntimeError(f"unsupported compression method {method} for {name}")
+    part.rename(out)
     print(f"  {out}  ({out.stat().st_size:,} bytes)")
 
 
@@ -144,9 +158,12 @@ def unzip_deflate64(name, method, crc, csize, usize, data, out: Path) -> None:
 
 
 def download_file(url: str, out: Path) -> None:
+    """Download to a .part file and rename it on success, so an interrupted
+    download never leaves a truncated file under the final name."""
     out.parent.mkdir(parents=True, exist_ok=True)
+    part = out.with_name(out.name + ".part")
     print(f"downloading {url} -> {out}")
-    with urllib.request.urlopen(url) as r, out.open("wb") as f:
+    with urllib.request.urlopen(url) as r, part.open("wb") as f:
         total = int(r.headers.get("Content-Length") or 0)
         done = 0
         while chunk := r.read(1 << 20):
@@ -155,9 +172,19 @@ def download_file(url: str, out: Path) -> None:
             if total:
                 print(f"\r  {done / total:6.1%}  ({done:,} / {total:,} bytes)", end="", flush=True)
     print()
+    part.rename(out)
 
 
 def fetch_small(dest: Path) -> None:
+    members = [f"ESA-Mission1/{m}" for m in SMALL_METADATA]
+    members += [f"ESA-Mission1/channels/channel_{c}.zip" for c in SMALL_CHANNELS]
+    # Checked before any network access, so a copy from the workshop USB
+    # drive needs no download at all.
+    missing = [m for m in members if not (dest / m).exists()]
+    if not missing:
+        print(f"small dataset already present under {dest}/ — nothing to download")
+        return
+
     if MIRROR:
         # A conference mirror hosts the subset as a single tarball.
         tarball = dest / "esa-adb-small.tar.gz"
@@ -172,15 +199,15 @@ def fetch_small(dest: Path) -> None:
     print("reading remote zip directory of ESA-Mission1.zip ...")
     entries = central_directory(url, total)
 
-    members = [f"ESA-Mission1/{m}" for m in SMALL_METADATA]
-    members += [f"ESA-Mission1/channels/channel_{c}.zip" for c in SMALL_CHANNELS]
-    expected = sum(entries[m][2] for m in members)
-    print(f"fetching {len(members)} members (~{expected / 1e6:,.0f} MB) via range requests")
-    for m in members:
+    expected = sum(entries[m][2] for m in missing)
+    print(f"fetching {len(missing)} members (~{expected / 1e6:,.0f} MB) via range requests")
+    for m in missing:
         extract_member(url, entries, m, dest / m)
 
 
 def fetch_mission(dest: Path, filename: str) -> None:
+    # The archive is kept after extracting, so a re-run skips the multi-GB
+    # download and the zip can be copied to a DATA_MIRROR.
     archive = dest / filename
     if not archive.exists():
         download_file(zenodo_url(filename), archive)
@@ -188,23 +215,22 @@ def fetch_mission(dest: Path, filename: str) -> None:
         sys.exit("`unzip` is required to extract the mission archives — please install it")
     print(f"extracting {archive} ...")
     subprocess.run(["unzip", "-q", "-o", str(archive), "-d", str(dest)], check=True)
-    archive.unlink()
 
 
 def main() -> None:
     size = sys.argv[1] if len(sys.argv) > 1 else "small"
-    dest = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("data/raw")
+    if size not in DEST:
+        sys.exit(f"unknown size {size!r} — use small, medium, or full")
+    dest = Path(sys.argv[2]) if len(sys.argv) > 2 else DEST[size]
     dest.mkdir(parents=True, exist_ok=True)
 
     if size == "small":
         fetch_small(dest)
     elif size == "medium":
         fetch_mission(dest, "ESA-Mission1.zip")
-    elif size == "full":
+    else:
         for filename in MISSIONS:
             fetch_mission(dest, filename)
-    else:
-        sys.exit(f"unknown size {size!r} — use small, medium, or full")
 
     print(f"\ndone. data is under {dest}/")
 

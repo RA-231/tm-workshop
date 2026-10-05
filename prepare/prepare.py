@@ -89,8 +89,13 @@ def main() -> int:
         return 1
 
     # 1. Telemetry channels -> prepared/channels/
+    # Flink ingests every file in this directory, so clear what an earlier
+    # run left behind: preparing the small set after the medium one must not
+    # leave the medium channels in place to be loaded.
     chan_out = OUT_DIR / "channels"
     chan_out.mkdir(parents=True, exist_ok=True)
+    for stale in chan_out.glob("*.json"):
+        stale.unlink()
     total = 0
     for path in files:
         n = convert_channel(path, chan_out / f"{path.stem}.json")
