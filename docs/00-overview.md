@@ -82,6 +82,11 @@ all of Mission1 at home: `task data:download -- medium` puts it in
 `data/medium`, and `task data:prepare -- medium` prepares it. Prepared, it is
 about 58 GB, so the workshop itself always uses the small set.
 
+All three missions (`task data:download -- full`) will download, but preparing
+them is still work in progress — the missions reuse the same channel names, so
+the pipeline needs a schema change before it can tell them apart. The README
+says what is missing.
+
 ## 0.4 — Set up your laptop
 
 ### 0.4.1 — Check prerequisites

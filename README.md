@@ -138,20 +138,33 @@ folders, so having one on disk never changes what the workshop ingests.
 ```bash
 # small  ~150 MB — 7 channels, Mission1 -> data/raw (the workshop set)
 task data:download
-# medium ~3.8 GB — all of Mission1 -> data/medium
+# medium ~3.8 GB download, ~7.5 GB on disk — all of Mission1 -> data/medium
 task data:download -- medium
-# full  ~11.6 GB — all three missions -> data/full
+# full  ~11.6 GB — all three missions -> data/full   (work in progress)
 task data:download -- full
 ```
 
-To work with the medium set after the workshop, run
+Each mission archive is kept after extraction so a re-run skips the transfer,
+which is why medium takes about twice its download size on disk.
+
+**medium — supported.** To work with all of Mission1 after the workshop, run
 `task data:prepare -- medium` in place of `task data:prepare`. It writes about
 58 GB of JSON (allow ~65 GB of free disk) and takes about 30 minutes, and the
 Flink load then takes hours. Run `task data:prepare` again to go back to the
-small set. Nothing in the pipeline reads `data/full`.
+small set.
+
+**full — work in progress, not yet supported.** The download works and lands in
+`data/full`, but nothing downstream can read it: `data/full` has no mount in the
+`prepare` service, and `task data:prepare -- full` is rejected. Preparing all
+three missions needs a schema change first, because the missions reuse the same
+channel names — `channel_41` exists in all three — so today they would overwrite
+each other. Supporting it means carrying a mission identifier through
+`prepare.py`, the Iceberg schema and the Trino views, then adding the mount and
+allowing the size. Tracked in
+[#5](https://github.com/RA-231/tm-workshop/issues/5).
 
 If you have the workshop USB drive, copy its `data` folder into the project
-folder; it holds the small set, the medium set and the checkpoints.
+folder; it holds the small set and the checkpoints.
 
 On the conference network, set `DATA_MIRROR=<url>` in `.env` to fetch from the
 local mirror instead of Zenodo. The full ESA download is ~11.6 GB; the small
@@ -178,8 +191,9 @@ see [arXiv:2406.17826](https://arxiv.org/abs/2406.17826) for the paper.
    starts; `litellm/config.yaml` does not list model IDs. Run `task llm:check`
    during prep to see the list and confirm `WORKSHOP_DEFAULT_MODEL` is still
    available.
-4. **USB drives:** put a `data` folder on each drive holding `data/raw`,
-   `data/checkpoints` and `data/medium` from a prepped machine (about 3.8 GB).
-   Leave out `data/prepared`; attendees rebuild it in about a minute. An
-   attendee copies the folder into the project folder, and `task data:download`
-   then finds the small set and downloads nothing.
+4. **USB drives:** put a `data` folder on each drive holding `data/raw` and
+   `data/checkpoints` from a prepped machine. Leave out `data/prepared`;
+   attendees rebuild it in about a minute. An attendee copies the folder into
+   the project folder, and `task data:download` then finds the small set and
+   downloads nothing. The medium set does not go on the drive — attendees who
+   want it download it after the workshop.
