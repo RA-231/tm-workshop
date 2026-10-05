@@ -161,13 +161,6 @@ def write_private(path: Path, text: str) -> None:
         fh.write(text)
 
 
-def qr_png_bytes(text: str) -> bytes:
-    """Render a QR to memory. Same stdin trick: the credential never hits argv."""
-    return subprocess.run(["qrencode", "-o", "-", "-s", "6", "-m", "2", "-l", "M"],
-                          input=text.encode(), check=True,
-                          stdout=subprocess.PIPE).stdout
-
-
 def make_qr(text: str, path: Path) -> None:
     """Render a QR without putting the credential in argv.
 
@@ -181,14 +174,22 @@ def make_qr(text: str, path: Path) -> None:
 
 
 def contact_sheet(cards) -> str:
-    parts = ["<title>Workshop seat credentials</title>",
+    """The print sheet, self-contained: QRs embedded, no external references.
+
+    Referencing seat-NN.png only renders in the directory the PNGs live in, so
+    the sheet broke the moment it was sent anywhere on its own. Embedding costs
+    ~130KB and makes the one file enough.
+    """
+    parts = ["<!doctype html><meta charset='utf-8'>",
+             "<title>Workshop seat credentials</title>",
              f"<style>{STYLE}</style>",
              "<h1>Workshop seat credentials &mdash; cut along the boxes</h1>",
              "<p class='warn'>Each QR contains a live credential. "
              "Hand to one person; do not leave on a table.</p>",
              "<div class='grid'>"]
-    for seat, png, expires in cards:
-        img = f"<img src='{html.escape(png)}' alt='seat {html.escape(seat)}'>" if png else "<em>no QR</em>"
+    for seat, img_src, expires in cards:
+        img = (f"<img src='{img_src}' alt='seat {html.escape(seat)}'>"
+               if img_src else "<em>no QR</em>")
         parts.append(
             f"<div class='card'><div class='seat'>{html.escape(seat)}</div>{img}"
             f"<div class='exp'>expires {html.escape(expires or 'end of workshop')}</div></div>")
@@ -197,11 +198,9 @@ def contact_sheet(cards) -> str:
 
 
 def phone_page(cards_b64) -> str:
-    """One self-contained file: QRs embedded, no external references.
+    """The phone page: same embedded QRs, plus search and handed-out tracking.
 
-    The print sheet references 50 separate PNGs, which does not survive being
-    sent to a co-facilitator's phone. This does -- AirDrop it, open it, hold it
-    up to the attendee's laptop camera.
+    AirDrop it, open it, hold a code up to the attendee's laptop camera.
     """
     parts = ["<!doctype html><meta charset='utf-8'>",
              "<meta name='viewport' content='width=device-width,initial-scale=1'>",
@@ -268,7 +267,7 @@ def main() -> int:
         except CardError as exc:
             sys.exit(f"refusing to generate cards: seat {seat}: {exc}")
         write_private(args.out / f"seat-{seat}.txt", body)
-        png = ""
+        img_src = ""
         if want_qr:
             png_path = args.out / f"seat-{seat}.png"
             make_qr(body, png_path)
@@ -277,9 +276,10 @@ def main() -> int:
                     verified += 1
             except CardError as exc:
                 sys.exit(f"refusing: {exc}")
-            png = png_path.name
-            cards_b64.append((seat, base64.b64encode(qr_png_bytes(body)).decode(), row["expires"]))
-        cards.append((seat, png, row["expires"]))
+            b64 = base64.b64encode(png_path.read_bytes()).decode()
+            img_src = f"data:image/png;base64,{b64}"
+            cards_b64.append((seat, b64, row["expires"]))
+        cards.append((seat, img_src, row["expires"]))
 
     write_private(args.out / "cards.html", contact_sheet(cards))
     if cards_b64:
