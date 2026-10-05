@@ -88,7 +88,11 @@ def convert_meta(csv_path: Path, keymap: dict, out: Path) -> int:
 
 
 def main() -> int:
-    files = sorted(DATA_DIR.rglob("channels/*.zip"))
+    # Skip AppleDouble sidecars. Copying the dataset to a FAT-formatted USB
+    # drive on macOS leaves a ._channel_41.zip beside every channel file; those
+    # match this glob and sort before the real ones, so a dataset copied from
+    # the workshop drive would fail on its first "channel" with BadZipFile.
+    files = sorted(p for p in DATA_DIR.rglob("channels/*.zip") if not p.name.startswith("._"))
     if ONLY:
         files = [p for p in files if p.stem in ONLY]
     if not files:
