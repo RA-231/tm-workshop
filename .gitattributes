@@ -1,0 +1,40 @@
+# Keep LF line endings in the working tree on every platform.
+#
+# Git for Windows installs with core.autocrlf=true by default, which rewrites
+# checked-out text files with CRLF. That breaks this repo in a way that is hard
+# to diagnose: superset/bootstrap.sh is COPYed into the Superset image and is
+# that image's CMD, so a CRLF checkout bakes the \r into the image and the
+# container exits with a "file not found" that names a file which plainly
+# exists. The host-side scripts under scripts/ fail the same way, with
+# `$'\r': command not found`.
+#
+# See WINDOWS.md for the rest of the Windows notes.
+
+* text=auto eol=lf
+
+# Interpreted by a shell, a container entrypoint, or a SQL/config parser —
+# these are the ones where a stray \r turns into a runtime error.
+*.sh         text eol=lf
+*.py         text eol=lf
+*.mjs        text eol=lf
+*.ts         text eol=lf
+*.sql        text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
+*.toml       text eol=lf
+*.json       text eol=lf
+*.conf       text eol=lf
+*.properties text eol=lf
+Dockerfile   text eol=lf
+.env.example text eol=lf
+.dockerignore text eol=lf
+
+# Never translate these.
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.svg  binary
+*.pkl  binary
+*.gz   binary
+*.zip  binary
+*.parquet binary

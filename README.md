@@ -27,6 +27,11 @@ We recommend that you stop any servers, containers or clusters that use common l
 The services run in containers. The chat step uses a workshop model key and a
 LibreChat account you create locally.
 
+**On Windows?** The workshop is built and rehearsed on macOS, and the setup
+scripts assume a Unix shell. [WINDOWS.md](WINDOWS.md) covers running it under
+WSL2 and the rough edges you may hit — untested, but it's the fastest path we
+know of.
+
 ## Quick start
 
 The setup actions are documented in [0.4 — Set up your laptop](docs/00-overview.md#04--set-up-your-laptop).
@@ -154,5 +159,3 @@ see [arXiv:2406.17826](https://arxiv.org/abs/2406.17826) for the paper.
    starts; `litellm/config.yaml` does not list model IDs. Run `task llm:check`
    during prep to see the list and confirm `WORKSHOP_DEFAULT_MODEL` is still
    available.
-4. A hosted deployment of this stack runs on the Intelligent Space Platform for
-   attendees who prefer not to install anything.
