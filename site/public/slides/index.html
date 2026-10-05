@@ -96,6 +96,10 @@ strong code, b code { color: var(--teal); }
 .chip::before {
   content: ""; width: 26px; height: 3px; border-radius: 2px; background: currentColor;
 }
+.chip .opt {
+  padding: 3px 10px; border-radius: 999px; font-size: 12.5px; letter-spacing: 1.6px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--rule); color: var(--ink-faint);
+}
 .slide[data-accent="ingest"] .chip { color: var(--cyan); }
 .slide[data-accent="query"]  .chip { color: var(--teal); }
 .slide[data-accent="chat"]   .chip { color: var(--violet); }
@@ -298,7 +302,7 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
   <aside class="notes">
     <b>Introduce the goal:</b> build an agent that investigates ESA telemetry and
     compares its findings with labelled anomalies.
-    <br/><b>Housekeeping:</b> Docker running? ~8&nbsp;GB RAM free? Wi-Fi + the mirror URL.
+    <br/><b>Housekeeping:</b> Docker running? ~8&nbsp;GB RAM free? Wi-Fi?
     Hand out the key cards now so they're in .env before the break.
     <br/>Press <b>?</b> any time for deck keys. <b>n</b> = these notes, <b>p</b> = presenter window.
   </aside>
@@ -313,10 +317,11 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
         <div class="avatar" style="border-color:#1d4e63; color:var(--cyan)">CF</div>
         <div>
           <h3>Christopher Fichman</h3>
-          <p class="role" style="color:var(--cyan)">Software Engineering Manager · SSMO,<br/>NASA Goddard Space Flight Center</p>
+          <p class="role" style="color:var(--cyan)">Software Engineering Manager · RA231</p>
         </div>
       </div>
       <ul class="tight">
+        <li><b>SSMO</b> GSFC &nbsp;·&nbsp; <b>MESC</b> JSC</li>
         <li><b>10+ years</b> working with telemetry and ground systems</li>
         <li>Built <b>MODM</b> for <b>TESS</b> at SSMO; refining it now for <b>CLPS</b> at JSC</li>
       </ul>
@@ -404,36 +409,66 @@ body.presenter #progress, body.presenter #pager, body.presenter #notespanel { di
     Rough timing: 0 = 10 min, 1 = 35, 2 = 40, break = 15, 3 = 20, 4 = 35, 5 = 40.
     <b>Say out loud:</b> if you fall behind on the ingest you can restore a checkpoint and
     continue with the query step.
+    <br/>Step 2 ends with an <b>optional 2.5 block</b> (partitioning, compaction, bloom
+    filters) — four slides before the break. Drop it if the clock is tight.
   </aside>
 </section>
 
-<section class="slide" data-title="Setup">
-  <div class="chip">0.4 — Set up your laptop</div>
+<section class="slide" data-title="0.4 — Set up your laptop">
+  <div class="chip">0.4.1–0.4.2 — Prerequisites and local config</div>
   <h2>Set up your laptop</h2>
-  <div class="cols wide-left">
+  <div class="cols">
     <div>
-      <pre>task setup            <span class="c"># 0.4.2 — .env + data dirs</span>
-task data:download    <span class="c"># 0.4.3 — ~150 MB subset</span>
-task up:docs          <span class="c"># 0.4.4 — docs + service links</span></pre>
-      <p class="lead">Then open <b>http://localhost:4321</b> — every service link
-         and every step's doc lives there.</p>
+      <pre>task setup   <span class="c"># 0.4.2 — .env + data dirs</span></pre>
+      <p>Run it from the repository directory. It creates <code>.env</code> from the
+         template, plus the local data directories everything else writes into.</p>
+      <div class="callout"><p><code>task --list</code> shows every command in the workshop.
+        <b>task up</b> starts the whole stack at once.</p></div>
     </div>
     <div class="card cyan">
-      <h3>You need</h3>
+      <h3>0.4.1 · You need</h3>
       <ul class="tight">
         <li>Docker (Compose v2)</li>
         <li><code>task</code> — taskfile.dev</li>
         <li>~8&nbsp;GB RAM for Docker, a few GB disk</li>
         <li>The workshop key card (Steps 3–5)</li>
       </ul>
-      <p class="small dim">On the conference network set <code>DATA_MIRROR</code> in
-        <code>.env</code> to use the local dataset mirror.</p>
     </div>
   </div>
-  <p class="kicker"><code>task --list</code> shows every command. <b>task up</b> starts the whole stack at once.</p>
+  <p class="kicker">Next: the dataset — and the guide you can start reading while it downloads.</p>
   <aside class="notes">
     Walk the room here. The two failure modes are: Docker not running, and Task not installed
-    (<code>brew install go-task</code>). Get the mirror URL on the screen and leave it there.
+    (<code>brew install go-task</code>).
+  </aside>
+</section>
+
+<section class="slide" data-title="0.4.3 — Download the dataset">
+  <div class="chip">0.4.3–0.4.4 — The dataset and the guide</div>
+  <h2>Download the data, <span class="thin">start reading</span></h2>
+  <div class="cols wide-left">
+    <div>
+      <pre>task data:download    <span class="c"># 0.4.3 — ~150 MB subset</span>
+task up:docs          <span class="c"># 0.4.4 — second terminal, run now</span></pre>
+      <div class="callout">
+        <p><b>Don't wait on the download.</b> <code>task up:docs</code> needs no dataset —
+          start it in a second terminal and read the overview while the data arrives.</p>
+      </div>
+      <p class="lead">Then open <b>http://localhost:4321</b> — every service link and every
+         step's doc lives there.</p>
+    </div>
+    <div class="card cyan">
+      <h3>Where the data comes from</h3>
+      <p class="dim">Got a <b>USB drive</b>? Copy its <code>data</code> folder into the repo
+        first — it holds the dataset and the checkpoints, and the download then fetches
+        nothing.</p>
+      <p class="dim">No drive? It comes straight from Zenodo — a few minutes over conference
+        Wi-Fi.</p>
+    </div>
+  </div>
+  <p class="kicker">The service links on that page light up as you start each step's services.</p>
+  <aside class="notes">
+    <b>Say it out loud:</b> <code>task up:docs</code> runs while the download is still going —
+    nobody should be sitting watching a progress bar. Get the guide on the projector.
   </aside>
 </section>
 
@@ -443,7 +478,7 @@ task up:docs          <span class="c"># 0.4.4 — docs + service links</span></p
   <div class="cols-3">
     <div class="card"><h3>Docker Compose</h3><p class="dim"><code>task up</code> starts the services in containers.</p></div>
     <div class="card"><h3>Local configuration</h3><p class="dim">Authentication is simplified for workshop use.</p></div>
-    <div class="card"><h3>Restore a checkpoint</h3><p class="dim"><code>task checkpoint:restore -- &lt;name&gt;</code> restores a pre-built warehouse. Ask for the name.</p></div>
+    <div class="card"><h3>Restore a checkpoint</h3><p class="dim"><code>task checkpoint:restore -- &lt;name&gt;</code> replaces your warehouse with a pre-built one from <code>data/checkpoints/</code>. Ask for the name.</p></div>
   </div>
   <div class="callout" style="margin-top:28px">
     <p>Ask questions as you go. Each step uses the services and data
@@ -540,7 +575,7 @@ task up:docs          <span class="c"># 0.4.4 — docs + service links</span></p
       <h3 style="color:var(--cyan)">Ingest</h3>
       <p class="dim">Flink writes telemetry into <b>Iceberg</b> tables with a schema,
         snapshots, and time travel, backed by files in object storage.</p>
-      <p class="small dim">Steps 1</p>
+      <p class="small dim">Step 1</p>
     </div>
     <div class="card teal">
       <h3 style="color:var(--teal)">Query</h3>
@@ -578,14 +613,17 @@ task up:docs          <span class="c"># 0.4.4 — docs + service links</span></p
         <div class="stat"><div class="big-num">150<span style="font-size:26px">MB</span></div><p>what we use</p></div>
       </div>
       <pre class="sm" style="margin-top:18px">task data:download            <span class="c"># 7 channels</span>
-task data:download -- medium  <span class="c"># Mission1</span>
-task data:download -- full    <span class="c"># everything</span></pre>
+task data:download -- medium  <span class="c"># all of Mission1</span>
+task data:download -- full    <span class="c"># 3 missions (prepare WIP)</span></pre>
     </div>
   </div>
   <p class="kicker">Same schema at every size — the subset is pulled out of the archive with <b>HTTP range requests</b>. Less waiting on conference Wi-Fi.</p>
   <aside class="notes">
     Explain that the subset contains files from the full archive and uses the same
-    schema. Attendees can also run the workshop with a full mission download.
+    schema. Attendees can also run every step against all of Mission1 at home —
+    <code>medium</code> is about <b>58&nbsp;GB once prepared</b>. The <code>full</code>
+    download works, but preparing all three missions is <b>work in progress</b>: they
+    reuse channel names, so each needs its own catalog.
   </aside>
 </section>
 
@@ -776,9 +814,14 @@ task flink:job        <span class="c"># 1.4.4 — load Iceberg tables</span></pr
   <div class="chip">1.6 — Verify or restore the load</div>
   <h2>1.6.1 — Check the row count</h2>
   <pre style="font-size:24px">task rowcount</pre>
+  <p class="small dim" style="margin-top:-6px"><b>1.6.2</b> — <code>task flink:job</code> is a
+     no-op once the committed rows match the input. To redo the load, use
+     <code>task flink:reload</code>.</p>
   <div class="callout">
-    <p>To skip the ingest, use <b>task checkpoint:restore -- &lt;name&gt;</b> to restore
-       a pre-built warehouse, including the Iceberg files and the Polaris catalog.</p>
+    <p><b>1.6.3</b> — to skip the ingest, <b>task checkpoint:restore -- &lt;name&gt;</b> replaces
+       your warehouse with a pre-built one from <code>data/checkpoints/</code> — Iceberg files
+       and Polaris catalog together. It stops Garage and Polaris while it runs, so start them
+       again afterwards with <b>task up:ingest</b> and <b>task up:query</b>.</p>
   </div>
   <p class="kicker">Flink has written the table to object storage and registered it
      in Polaris. Next, we'll query it with Trino.</p>
@@ -925,6 +968,108 @@ task flink:job        <span class="c"># 1.4.4 — load Iceberg tables</span></pr
   </aside>
 </section>
 
+<!-- 2.5 — optional: storage layout and query performance -->
+
+<section class="slide center" data-title="2.5 — Storage layout and performance · optional" data-accent="query">
+  <div class="chip">2.5 — Storage layout and query performance <span class="opt">optional</span></div>
+  <h1>Layout decides<br/>the speed</h1>
+  <p class="lead dim">Partitioning, compaction, and bloom filters — measured on this
+     warehouse. Nothing here needs running during the step; it's all written up in the guide.</p>
+  <aside class="notes">
+    <b>Skip this block if you're behind</b> — it's reference material and the numbers are in
+    the guide. If there's time, it's the part attendees take back to their own tables.
+  </aside>
+</section>
+
+<section class="slide" data-title="2.5.1 — Partitioning · optional" data-accent="query">
+  <div class="chip">2.5.1 — Partitioning <span class="opt">optional</span></div>
+  <h2>One column decides <span class="thin">what gets read</span></h2>
+  <div class="cols wide-left">
+    <div>
+      <pre class="sql sm"><span class="c">-- flink/sql/ingest.sql</span>
+) <span class="k">PARTITIONED BY</span> (ts_month)</pre>
+      <p>Iceberg stores each file's partition value in the manifest, alongside the min/max
+         statistics. So a filter on the partition column lets the planner discard
+         non-matching files <b>by reading metadata alone</b> — before opening a single
+         Parquet file.</p>
+      <div class="callout"><p>A filter on <code>ts</code> still skips files via column stats.
+        Only a filter on <code>ts_month</code> eliminates <b>whole partitions</b>.</p></div>
+    </div>
+    <div class="card teal">
+      <h3>Measured on this warehouse</h3>
+      <div class="stat" style="margin:18px 0 16px">
+        <div class="big-num" style="color:var(--teal)">1 <span style="font-size:24px; color:var(--ink-faint)">of</span> 168</div>
+        <p>files read for one month</p>
+      </div>
+      <p class="dim"><code>ts_month = '2000-03'</code> scans <b>142,705</b> rows out of
+        <b>27.6 million</b>.</p>
+      <p class="small dim">Finer partitions prune better — and produce more, smaller files.
+        That cost is the next slide.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="2.5.2 — Compaction · optional" data-accent="query">
+  <div class="chip">2.5.2 — Compaction after streaming ingest <span class="opt">optional</span></div>
+  <h2>Short commits make <span class="thin">small files</span></h2>
+  <div class="cols wide-left">
+    <div>
+      <p>A streaming job writes one file per open partition <b>per commit</b> — and it commits
+         on the checkpoint interval:</p>
+      <pre class="sql sm"><span class="k">SET</span> <span class="s">'execution.checkpointing.interval'</span> = <span class="s">'5s'</span>;</pre>
+      <p>Short windows are the normal streaming choice — they bound how much a failure
+         replays and how fast rows appear — but every one of them closes the current files
+         and starts new ones. This load committed <b>10 times</b>.</p>
+      <pre class="sm">task trino:optimize  <span class="c"># ALTER TABLE … EXECUTE optimize</span></pre>
+    </div>
+    <div class="card teal">
+      <h3>842 → 168 files</h3>
+      <table style="margin-top:6px">
+        <tr><th></th><th>files</th><th>avg size</th></tr>
+        <tr><td class="dim">after ingest</td><td><b>842</b></td><td>126 KB</td></tr>
+        <tr><td class="dim">compacted</td><td><b>168</b></td><td>641 KB</td></tr>
+      </table>
+      <p class="small dim" style="margin-top:14px">One file per partition — a <b>5×</b>
+        consolidation of identical data. Scanning the same rows across 918 files instead of
+        98 measured about <b>3× the scan CPU</b>.</p>
+      <p class="small dim">It adds a snapshot, so the old files stay readable for time travel
+        until <code>expire_snapshots</code>. It merges <b>within</b> a partition, so partition
+        granularity caps how large a compacted file can get.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-title="2.5.3 — Bloom filters · optional" data-accent="query">
+  <div class="chip">2.5.3 — Bloom filters for non-partition columns <span class="opt">optional</span></div>
+  <h2>Compaction costs you <span class="thin">the channel filter</span></h2>
+  <div class="cols wide-left">
+    <div>
+      <p>Before compaction each input file holds one channel, so
+         <code>WHERE channel = …</code> skips files on min/max stats. Compaction merges every
+         channel of a month into one file — that clustering is gone, and the same filter now
+         reads <b>all 27.6 M rows, all 168 files</b>.</p>
+      <p>Partitioning on <code>channel</code> too would multiply the partition count. A
+         <b>bloom filter</b> is cheaper — a per-row-group index that proves a value
+         <em>absent</em>.</p>
+      <pre class="sql xs"><span class="k">ALTER TABLE</span> iceberg.esa_adb.readings
+  <span class="k">SET PROPERTIES</span> parquet_bloom_filter_columns = <span class="k">ARRAY</span>[<span class="s">'channel'</span>];</pre>
+    </div>
+    <div class="card teal">
+      <h3>Rows read</h3>
+      <p class="small dim" style="margin-top:-4px">5.4 M-row slice · only 104,998 rows match</p>
+      <table style="margin-top:8px">
+        <tr><td class="dim">nothing</td><td>1,193,591</td></tr>
+        <tr><td class="dim">sort by channel</td><td>725,278</td></tr>
+        <tr><td><b>bloom filter</b></td><td><b>336,966</b></td></tr>
+      </table>
+      <p class="small dim" style="margin-top:14px">Equality predicates only, evaluated per row
+        group at read time — and false positives are possible.</p>
+    </div>
+  </div>
+  <p class="kicker">For this dataset: <b>partition by month, bloom filter on channel</b> —
+     without growing the partition count.</p>
+</section>
+
 <section class="slide center" data-title="Break" data-accent="query">
   <h1 style="font-size:96px">☕ Break</h1>
   <p class="lead">Fifteen minutes.</p>
@@ -955,12 +1100,16 @@ task flink:job        <span class="c"># 1.4.4 — load Iceberg tables</span></pr
       multi-user support, connections to multiple providers, and <b>MCP support</b>.</p></div>
     <div class="card violet"><h3>LiteLLM</h3><p class="dim">An LLM gateway. One
       OpenAI-compatible HTTP API in front of 100+ providers.</p></div>
-    <div class="card violet"><h3>The key on your card</h3><p class="dim">Scoped to the workshop model project,
-      on the shared workshop credential.</p></div>
+    <div class="card violet"><h3>The key on your card</h3><p class="dim">Scoped to the workshop's
+      model project and nothing else — and it <b>expires at the end of the day</b>.</p></div>
   </div>
-  <pre style="margin-top:28px">task up:chat     <span class="c"># 3.3.3 — start chat services</span></pre>
-  <p class="kicker">LibreChat → <b>localhost:3080</b>. Register any account — it's your local
-     instance, email verification is off.</p>
+  <div class="callout" style="margin-top:30px">
+    <p>It reaches a handful of models and <b>nothing else</b> — no other projects, no other
+      spend. <code>task llm:check</code> prints exactly which, and is the quickest way to tell
+      a bad key from a bad config.</p>
+  </div>
+  <p class="kicker">Everything in Steps 3–5 runs on that key. <b>3.3</b> gets it into
+     <code>.env</code> — without typing 170 characters.</p>
 </section>
 
 <section class="slide" data-title="3.2 — Gateway controls in LiteLLM" data-accent="chat">
@@ -981,6 +1130,40 @@ task flink:job        <span class="c"># 1.4.4 — load Iceberg tables</span></pr
   <aside class="notes">
     Explain why the workshop includes the gateway and when attendees might use
     a direct provider connection instead.
+  </aside>
+</section>
+
+<section class="slide" data-title="3.3 — Enter the workshop key" data-accent="chat">
+  <div class="chip">3.3 — Configure and start the chat services</div>
+  <h2>Get the key into <span class="thin">.env</span></h2>
+  <div class="cols wide-left">
+    <div>
+      <p><b>3.3.1</b> — the key is about <b>170 characters</b>, so scan the QR code on your
+         card rather than typing it:</p>
+      <ol class="tight">
+        <li><code>task up:docs</code>, if it isn't running already</li>
+        <li>open <b>localhost:4321/creds/</b> → <b>Start camera</b></li>
+        <li>hold the card up, then copy the two lines it decodes into <code>.env</code></li>
+      </ol>
+      <p class="small dim">Copy <code>.env.example</code> to <code>.env</code> first if you
+        haven't — the key goes in as <code>LLM_API_KEY</code>. You can also type the two lines
+        from the card by hand.</p>
+    </div>
+    <div class="card violet">
+      <h3>The scanner is local</h3>
+      <p class="dim">It decodes the QR code <b>in your browser</b>, with a JavaScript library
+        bundled into the site at build time.</p>
+      <p class="dim">It never sends the credential over the network, and it doesn't fetch a
+        decoder from a CDN.</p>
+    </div>
+  </div>
+  <pre class="sm">task llm:check   <span class="c"># 3.3.2 — which models the key reaches</span>
+task up:chat     <span class="c"># 3.3.3 — postgres, litellm, mongodb, librechat</span></pre>
+  <p class="kicker"><b>3.3.4</b> — LibreChat → <b>localhost:3080</b>. Register any account —
+     it's your local instance, email verification is off.</p>
+  <aside class="notes">
+    Put the creds page on the projector while they scan. <b>Run llm:check before up:chat</b> —
+    it catches a mistyped or expired key in one line, instead of four services failing later.
   </aside>
 </section>
 
@@ -1048,16 +1231,19 @@ task flink:job        <span class="c"># 1.4.4 — load Iceberg tables</span></pr
     <div>
       <pre class="py sm"><span class="k">from</span> fastmcp <span class="k">import</span> FastMCP
 
-mcp = FastMCP(<span class="s">"telemetry-trino"</span>)
+mcp = FastMCP(<span class="s">"trino"</span>)
 
 <span class="hl">@mcp.tool</span>
 <span class="k">def</span> <b>query</b>(sql: str) -> dict:
-    <span class="s">"""Run a read-only SQL query against
-    the telemetry warehouse. ..."""</span>
+    <span class="s">"""Run a read-only SQL query
+    (SELECT/SHOW/DESCRIBE/WITH), capped at MAX_ROWS.
+    Fully-qualify tables as catalog.schema.table.
+    Prefer aggregation over pulling raw rows."""</span>
     ...
 
 mcp.run(transport=<span class="s">"http"</span>, port=<span class="s">8000</span>)</pre>
-      <p class="small dim">See the implementation in <code>mcp-server/server.py</code>.</p>
+      <p class="small dim">Two servers, both FastMCP: <code>trino-mcp/server.py</code> has the
+        generic SQL tools above; <code>mcp-server/server.py</code> has this dataset's.</p>
     </div>
     <div>
       <div class="card amber"><h3>1 · Signature → schema</h3><p class="dim">FastMCP turns the
@@ -1079,12 +1265,12 @@ mcp.run(transport=<span class="s">"http"</span>, port=<span class="s">8000</span
   <h2>General queries and purpose-built tools</h2>
   <div class="cols">
     <div class="card">
-      <h3><code>query(sql)</code></h3>
+      <h3><code>query(sql)</code> <span class="dim">· trino</span></h3>
       <p class="dim">The model writes SQL for a range of questions. Inspect the query
         and results for errors.</p>
     </div>
     <div class="card teal">
-      <h3><code>channel_summary(channel)</code></h3>
+      <h3><code>channel_summary(channel)</code> <span class="dim">· esa-adb</span></h3>
       <p class="dim">A fixed SQL statement answers a specific question, reducing the
         need for the model to construct a query.</p>
     </div>
@@ -1095,25 +1281,32 @@ mcp.run(transport=<span class="s">"http"</span>, port=<span class="s">8000</span
   </div>
 </section>
 
-<section class="slide" data-title="4.3 — Start and connect the server" data-accent="mcp">
-  <div class="chip">4.3 — Start and connect the server</div>
-  <h2>Run it</h2>
-  <pre>task up:mcp     <span class="c"># 4.3.1 — start the server</span></pre>
+<section class="slide" data-title="4.3 — Start and connect the servers" data-accent="mcp">
+  <div class="chip">4.3 — Start and connect the servers</div>
+  <h2>Run them</h2>
+  <pre>task up:mcp     <span class="c"># 4.3.1 — build + start all three, restart LibreChat</span></pre>
   <div class="cols wide-left">
     <div>
-      <pre class="yaml sm"><span class="c"># librechat/librechat.yaml</span>
+      <pre class="yaml xs"><span class="c"># librechat/librechat.yaml</span>
 mcpServers:
-  telemetry:
+  esa-adb:          <span class="c"># this dataset's tools</span>
     type: streamable-http
-    url: http://mcp-server:8000/mcp</pre>
-      <p><b>4.3.2:</b> Reload LibreChat, open a new chat, and enable the <b>telemetry</b> server in the tools
-         menu.</p>
+    url: http://mcp-server:8000/mcp
+  trino:            <span class="c"># generic SQL</span>
+    type: streamable-http
+    url: http://trino-mcp:8000/mcp
+  superset:         <span class="c"># charts — Step 5</span>
+    type: streamable-http
+    url: http://superset-mcp:8000/mcp</pre>
     </div>
     <div class="card amber">
-      <h3>Watch the tool-call panel</h3>
-      <p class="dim">You'll see the model list tables, describe schemas, and revise SQL.
-        Inspect the queries and their results.</p>
-      <p class="small dim">If it doesn't appear: <code>docker compose restart librechat</code>.</p>
+      <h3>4.3.2 · Tick them on</h3>
+      <p class="dim"><code>task up:mcp</code> has already restarted LibreChat. Open a new chat,
+        open the <b>MCP Servers</b> menu under the message box, and tick <b>esa-adb</b> and
+        <b>trino</b>. <b>superset</b> is for Step 5.</p>
+      <p class="small dim">Then watch the tool-call panel: the model lists tables, describes
+        schemas, and revises SQL. Inspect the queries and their results.</p>
+      <p class="small dim">If they don't appear: <code>docker compose restart librechat</code>.</p>
     </div>
   </div>
 </section>
@@ -1150,7 +1343,8 @@ mcpServers:
     </div>
     <div class="card rose">
       <h3>4.5.3 · Query restrictions</h3>
-      <p class="dim">Read the read-only check. Think about what else production needs:
+      <p class="dim">Read the read-only check in <code>trino-mcp/server.py</code>. Think
+        about what else production needs:
         <b>row-level auth, query timeouts, cost caps</b>.</p>
     </div>
   </div>
@@ -1281,7 +1475,8 @@ mcpServers:
         <li><b>5.4.2 — Name:</b> Telemetry Anomaly Analyst</li>
         <li><b>5.4.3 — Model:</b> Workshop Models → <code>workshop-default</code></li>
         <li><b>5.4.4 — Instructions:</b> paste the prompt (next slide).</li>
-        <li><b>5.4.5 — Tools:</b> enable <b>esa-adb</b>, <b>trino</b>, <b>superset</b>.</li>
+        <li><b>5.4.5 — Tools:</b> <b>MCP Servers → Add MCP Server Tools</b>, then <b>Add</b>
+            on <b>esa-adb</b>, <b>trino</b> and <b>superset</b>.</li>
         <li><b>5.4.6 — Save and share</b> the agent.</li>
       </ol>
     </div>
@@ -1291,6 +1486,8 @@ mcpServers:
         for chat, but not all of them can call tools on this path.</p>
       <p class="dim">v0.8.7 has <b>no API to create an agent</b>. Share the saved
         agent to let attendees use the same configuration.</p>
+      <p class="small dim"><b>Tools → Add Tools</b> is LibreChat's own built-in tools
+        (Google, Wolfram) — not the MCP servers.</p>
     </div>
   </div>
 </section>
@@ -1491,8 +1688,8 @@ phase+duration explanation, the chart URL, and your confidence.</pre>
     <div class="card cyan"><h3>Your data</h3><p class="dim">Configure <code>trino-mcp</code>
       for another dataset and add a server with detectors suited to that data.</p></div>
     <div class="card teal"><h3>More signal</h3><p class="dim">Re-run today at
-      <code>medium</code> or <code>full</code> size — all of Mission1, or all three missions.
-      Same commands.</p></div>
+      <code>medium</code> — all of Mission1, ~58&nbsp;GB once prepared. <code>full</code>
+      downloads all three missions, but preparing them is still work in progress.</p></div>
     <div class="card violet"><h3>More protocol</h3><p class="dim">Add MCP
       <b>elicitation</b> and <b>sampling</b>. Run the same servers against Claude Desktop or
       Claude Code.</p></div>
