@@ -95,6 +95,8 @@ it's internal to the stack and publishes no host port.
 
 ## ↑ ↑ ↓ ↓ ← → ← → B A
 
+Shortcut to Lesson 3 for folks in a hurry
+
 ```bash
 # Garage, Polaris (+ Postgres), Flink
 task up:ingest
