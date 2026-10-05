@@ -1,6 +1,5 @@
 # Workshop data — downloaded via `task data:download`, never committed
 data/
-checkpoints/
 
 # Local tooling state
 .claude/

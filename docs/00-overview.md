@@ -124,8 +124,9 @@ available as you start each step's services.
 1. `task up` starts the services in Docker Compose.
 2. The stack uses simplified authentication for local workshop use.
 3. To skip the ingest, use `task checkpoint:restore -- <name>` to restore a
-   pre-built warehouse, including the Iceberg files and the Polaris catalog.
-   Your instructor will provide the checkpoint names.
+   pre-built warehouse from `data/checkpoints/`, including the Iceberg files
+   and the Polaris catalog. It replaces your own warehouse. Your instructor
+   will provide the checkpoint names.
 
 ## 0.6 — Resolve a host-port conflict
 

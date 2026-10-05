@@ -12,7 +12,6 @@ site/.astro
 # and keeps minted credentials away from the Docker daemon entirely.
 .git
 data/
-checkpoints/
 attendee-keys.csv
 dryrun-keys.csv
 handouts/
