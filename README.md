@@ -197,3 +197,8 @@ see [arXiv:2406.17826](https://arxiv.org/abs/2406.17826) for the paper.
    the project folder, and `task data:download` then finds the small set and
    downloads nothing. The medium set does not go on the drive — attendees who
    want it download it after the workshop.
+
+   Copy with `COPYFILE_DISABLE=1 rsync -a data/ /Volumes/<drive>/data/`, or run
+   `dot_clean /Volumes/<drive>` once afterwards. A Finder copy to a FAT drive
+   leaves a `._channel_41.zip` sidecar beside every file; `prepare.py` skips
+   them, but they are still clutter an attendee sees on Windows and Linux.
