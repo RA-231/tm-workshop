@@ -1,5 +1,6 @@
 import { defineConfig, passthroughImageService } from "astro/config";
 import starlight from "@astrojs/starlight";
+import mermaid from "astro-mermaid";
 
 // https://astro.build/config
 export default defineConfig({
@@ -9,6 +10,7 @@ export default defineConfig({
   // Alpine build image tiny and avoids sharp's native-binary dance.
   image: { service: passthroughImageService() },
   integrations: [
+    mermaid({ enableLog: false }),
     starlight({
       title: "Space Telemetry",
       tagline: "A Space Summit 2026 workshop",

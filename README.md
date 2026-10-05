@@ -15,7 +15,7 @@ to explore it through an MCP server.
 - **Docker** (a recent Docker Desktop or Engine; Compose v2)
 - **[Task](https://taskfile.dev)** (`brew install go-task` / see taskfile.dev)
 - ~8 GB of RAM for Docker and a few GB of free disk
-- The workshop model key (handed out on a card at the session) for Steps 3–5
+- Credentials for OpenAI LLM access (provided by your instructor for Steps 3–5)
 
 The services run in containers. The chat step uses a workshop model key and a
 LibreChat account you create locally.

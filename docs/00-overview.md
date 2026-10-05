@@ -9,34 +9,45 @@ the telemetry files**, along with the command or screen and any error message.
 
 ## 0.1 — Workshop architecture
 
-```
-                    ┌──────────────────────────────────────────────────────────┐
-                    │                     your laptop (Docker)                  │
-                    │                                                          │
-  ESA telemetry     │  ┌──────────┐    ┌─────────────────────┐                 │
-  (pickled  ────────┼─►│ prepare  │───►│ Flink               │                 │
-   channels)        │  │ (→ JSON) │    │  (batch → Iceberg)  │                 │
-                    │  └──────────┘    └──────────┬──────────┘                 │
-                    │                     ┌────────┐           │ writes        │
-                    │                     │ Polaris│◄──────────┤ metadata      │
-                    │                     │(catalog)│          ▼               │
-                    │                     └───▲────┘   ┌──────────────┐        │
-                    │                         │        │ Garage (S3)   │       │
-                    │                         │        │ Iceberg files │       │
-                    │                         │        └──────▲───────┘        │
-                    │                     ┌───┴────┐          │ reads          │
-                    │   ┌──────────┐      │ Trino  │──────────┘                │
-                    │   │ Superset │─SQL─►│        │◄─SQL─┐                    │
-                    │   └──────────┘      └────────┘      │                    │
-                    │                                ┌────┴──────┐             │
-                    │   ┌───────────┐    ┌────────┐  │ MCP server│             │
-                    │   │ LibreChat │───►│ LiteLLM│  └────▲──────┘             │
-                    │   │  (chat UI)│    └───┬────┘       │ MCP               │
-                    │   └─────┬─────┘        │            │                    │
-                    │         └──────────────┼────────────┘                    │
-                    └────────────────────────┼─────────────────────────────────┘
-                                             ▼
-                                     the model provider
+```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 15
+    padding: 8
+    rankSpacing: 40
+---
+flowchart TB
+    accTitle: Workshop architecture
+    accDescr: ESA telemetry is prepared as JSON and loaded by Flink into Iceberg tables. Polaris tracks table metadata, and Garage stores the files. Trino reads the tables for Superset and the workshop MCP server. LibreChat calls MCP tools and sends model requests through LiteLLM to an external provider.
+
+    esa["ESA telemetry"]
+    provider["Model provider"]
+
+    subgraph laptop["Your laptop · Docker"]
+        prepare["Prepare JSON"]
+        flink["Flink"]
+        polaris["Polaris catalog"]
+        garage["Garage · S3<br/>Iceberg files"]
+        trino["Trino"]
+        superset["Superset"]
+        mcp["MCP server"]
+        librechat["LibreChat"]
+        litellm["LiteLLM"]
+
+        prepare -->|JSON| flink
+        flink -->|Metadata| polaris
+        flink -->|Write files| garage
+        trino -->|Catalog| polaris
+        trino -->|Read files| garage
+        superset -->|SQL| trino
+        mcp -->|SQL| trino
+        librechat -->|MCP| mcp
+        librechat -->|Model API| litellm
+    end
+
+    esa --> prepare
+    litellm --> provider
 ```
 
 ## 0.2 — Workshop sequence
@@ -80,8 +91,8 @@ full mission at home
 ### 0.4.1 — Check prerequisites
 
 You need Docker with Compose v2, [Task](https://taskfile.dev), about 8 GB of RAM
-available to Docker, and a few GB of free disk space. Steps 3–5 also need the
-workshop model key handed out by your instructor.
+available to Docker, and a few GB of free disk space. Your instructor will
+provide credentials for OpenAI LLM access in Steps 3–5.
 
 ### 0.4.2 — Create the local configuration
 
@@ -90,6 +101,9 @@ From the repository directory, run:
 ```bash
 task setup            # creates .env from the template + local data dirs
 ```
+
+You can continue with the data steps now. You'll add the workshop credentials
+to `.env` in [3.3.1 — Enter the workshop key](03-chat.md#331--enter-the-workshop-key).
 
 ### 0.4.3 — Download the workshop dataset
 

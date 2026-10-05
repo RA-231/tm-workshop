@@ -8,7 +8,7 @@ tasks:
     cmds:
       - mkdir -p data/raw
       - cp -n .env.example .env || true
-      - echo "ready — edit .env when you receive the workshop AWS credential"
+      - echo "ready — your instructor will provide credentials for OpenAI LLM access in Step 3"
 
   data:download:
     desc: "Download the ESA dataset: task data:download -- [small|medium|full]"

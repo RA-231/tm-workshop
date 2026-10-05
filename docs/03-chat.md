@@ -1,7 +1,8 @@
 # Step 3 — Chat with LibreChat and LiteLLM
 
-This step connects LibreChat to the model provider through LiteLLM. In Step 4,
-we'll add tools for querying the telemetry warehouse.
+This step uses credentials provided by your instructor to access OpenAI LLMs
+from LibreChat through LiteLLM. In Step 4, we'll add tools for querying the
+telemetry warehouse.
 
 ## 3.1 — Chat services and the workshop key
 
