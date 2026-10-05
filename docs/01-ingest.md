@@ -184,8 +184,18 @@ catalog operations while it runs. `flink:reload` asks for confirmation first.
 
 ### 1.6.3 — Restore a workshop checkpoint
 
-To skip the ingest, use `task checkpoint:restore -- <name>` to restore a
-pre-built warehouse, including the Iceberg files and the Polaris catalog.
-Ask your instructor for the checkpoint name, then start the stack and query.
+To skip the ingest, restore a pre-built warehouse from `data/checkpoints/`,
+including the Iceberg files and the Polaris catalog. Ask your instructor for
+the checkpoint name. The restore replaces your own warehouse and stops Garage
+and Polaris while it runs, so start the services again afterwards:
+
+```bash
+# replace the warehouse with the checkpoint
+task checkpoint:restore -- <name>
+# start Garage, Polaris and Flink again
+task up:ingest
+# start Trino and Superset
+task up:query
+```
 
 Next: [Step 2 — Querying with Trino and Superset](02-query.md)

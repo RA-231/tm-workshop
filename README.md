@@ -63,10 +63,12 @@ or screen you're using, and any error message.
 
 ### If you fall behind
 
-Use `task checkpoint:restore -- <name>` to restore a pre-built warehouse,
-including the Iceberg files and the Polaris catalog. You can then start the
-stack and query without repeating the ingest. Your instructor will share the
-checkpoint names and a mirror URL.
+Use `task checkpoint:restore -- <name>` to restore a pre-built warehouse from
+`data/checkpoints/`, including the Iceberg files and the Polaris catalog. The
+restore replaces your own warehouse and stops Garage and Polaris while it runs.
+Start the services again with `task up:ingest` and `task up:query`, then query
+without repeating the ingest. Your instructor will share the checkpoint names
+and a mirror URL.
 
 ### Ports
 
@@ -153,10 +155,12 @@ see [arXiv:2406.17826](https://arxiv.org/abs/2406.17826) for the paper.
    — no build, no network, so it also works opened straight off disk. `?` lists
    the controls; `p` opens a presenter window with speaker notes, the next
    slide, and a timer; `o` is the overview grid for jumping around.
-2. `task checkpoint:save <name>` after finishing each step during prep; host
-   the `checkpoints/` directory on the mirror and set `CHECKPOINT_BASE_URL` so
-   `checkpoint:restore` can fetch it. A checkpoint captures the Garage volumes
-   and the Polaris Postgres volume together, so a restore is complete.
+2. `task checkpoint:save -- <name>` after finishing each step during prep. Run
+   `docker compose stop` first so the snapshot is consistent. Checkpoints are
+   saved to `data/checkpoints/`; host that directory on the mirror and set
+   `CHECKPOINT_BASE_URL` so `checkpoint:restore` can fetch it. A checkpoint
+   captures the Garage volumes and the Polaris Postgres volume together, so a
+   restore is complete.
 3. The gateway discovers the models available to the workshop key each time it
    starts; `litellm/config.yaml` does not list model IDs. Run `task llm:check`
    during prep to see the list and confirm `WORKSHOP_DEFAULT_MODEL` is still
