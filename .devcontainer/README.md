@@ -22,7 +22,7 @@ Repo → Settings → Codespaces → Prebuilds → *Set up prebuild*:
 | Trigger | *On configuration change* | the stack changes rarely; a push-triggered prebuild would rebuild 16 GB on every docs commit |
 | Region availability | whichever region the venue is in | a prebuild only helps attendees in a region it exists in |
 | Template history | 1 version | each version stores the full ~20 GB snapshot |
-| Prebuild dev container | 8-core (forced by `hostRequirements`) | |
+| Prebuild dev container | 4-core (the largest available) | |
 
 Then **run the prebuild once manually** and read its workflow log — that log is
 what answers the open question below.
@@ -75,15 +75,48 @@ Verified locally:
   leaves `LLM_API_KEY` untouched
 - skopeo `docker-archive` → `docker load` round-trips: correct repo:tag, image runs
 
+## Machine size is a hard ceiling
+
+`gh api /repos/RA-231/tm-workshop/codespaces/machines` returns exactly two
+types: 2-core/8 GB/32 GB and **4-core/16 GB/32 GB**. There is no 8-core and no
+64 GB disk. Asking for more than exists does not downgrade — codespace creation
+fails outright with *"no machine types are available"*. `hostRequirements` is
+therefore set to the 4-core ceiling.
+
+If a bigger machine is wanted, it is an org policy change (Settings →
+Codespaces → Machine types), not a config change here — and the prebuild and
+`hostRequirements` would both need revisiting.
+
+### 16 GB does not fit the laptop defaults
+
+Two services size themselves far past what is left on a 16 GB box:
+
+- **Trino** — its image sets `-XX:MaxRAMPercentage=80` and compose puts no
+  limit on the container, so the JVM sizes against the whole host. Measured at
+  **13.2 GB** on a 94 GB machine. On 16 GB it would claim ~12.8 GB.
+- **Flink** — reserves 6 GB outright (2 GB jobmanager + 4 GB taskmanager).
+
+`docker-compose.codespaces.yml` caps both, plus the other JVM and Node
+services, to a ~14 GB budget leaving ~2 GB for the VS Code server and OS. It is
+applied through `COMPOSE_FILE` in `remoteEnv`, so `task` needs no change and a
+laptop never sees it (verified: `docker compose config` without `COMPOSE_FILE`
+still has zero `mem_limit` entries and Flink at 2g/4g).
+
+Flink needs both halves — a cgroup limit alone makes it OOM-kill, because it
+sizes from its own `*.memory.process.size` property. Those properties move down
+with the limits.
+
 Not verified — needs a real Codespace:
 
 1. Whether Docker is usable in `updateContentCommand` (above)
-2. Whether ~20 GB fits the disk, and whether 32 GB RAM actually holds 17 services
-3. Whether Superset and LibreChat work behind the Codespaces auth proxy
-4. Whether the QR scanner's `getUserMedia` works on the forwarded https origin
-5. The ~51 `localhost` references in `docs/` and `site/src/content/docs/`, which
+2. Whether the ~14 GB budget actually holds through Step 5, and whether
+   Flink ingest still completes with 2560m across 4 slots
+3. Whether ~19 GB of images and data fits the 32 GB disk
+4. Whether Superset and LibreChat work behind the Codespaces auth proxy
+5. Whether the QR scanner's `getUserMedia` works on the forwarded https origin
+6. The ~51 `localhost` references in `docs/` and `site/src/content/docs/`, which
    still tell attendees the wrong URL — unaddressed here
-6. Cost per attendee for an 8-core machine over a session
+7. Cost per attendee for a 4-core machine over a session
 
 ## Checklist for the trial run
 

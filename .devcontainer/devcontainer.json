@@ -16,19 +16,31 @@
     }
   },
 
-  // Measured on a machine with the full stack built (2026-10-05):
+  // The largest machine this repo offers (`gh api
+  // /repos/RA-231/tm-workshop/codespaces/machines`) is 4 cores / 16 GB / 32 GB.
+  // Asking for more than exists fails at creation with "no machine types are
+  // available", so these are a ceiling, not a preference.
+  //
+  // Measured footprint on a machine with the full stack built (2026-10-05):
   //   images       ~16 GB   (11.5 GB pulled + 4.7 GB built locally)
-  //   data/raw     139 MB   small ESA set
   //   data/prepared 2.3 GB  written by `task data:prepare`
+  //   data/raw     139 MB   small ESA set
   //   volumes      ~573 MB  Garage warehouse, Polaris + LiteLLM PG, Mongo
-  // That is ~19 GB before the devcontainer's own base layers, which does not
-  // leave workable headroom on a 32 GB disk -- hence 64 GB. Flink alone
-  // reserves 6 GB of RAM (docker-compose.yml:125,142) across 17 services.
-  // Storage of 64 GB selects the 8-core machine; see issue #7 for the cost.
+  // ~19 GB, plus base layers, against a 32 GB disk. It fits, without much room.
   "hostRequirements": {
-    "cpus": 8,
-    "memory": "32gb",
-    "storage": "64gb"
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+
+  // 16 GB does not hold the stack at its laptop defaults: Trino's image sets
+  // -XX:MaxRAMPercentage=80 and compose puts no limit on the container, so the
+  // JVM sizes against the whole host (measured: 13.2 GB on a 94 GB machine).
+  // Flink's 6 GB is reserved outright. The override caps the JVM services so
+  // they size against a cgroup instead. COMPOSE_FILE makes every `task` and
+  // `docker compose` call pick it up with no change to Taskfile.yml.
+  "remoteEnv": {
+    "COMPOSE_FILE": "docker-compose.yml:docker-compose.codespaces.yml"
   },
 
   // Lifecycle, and which hooks a prebuild actually runs:

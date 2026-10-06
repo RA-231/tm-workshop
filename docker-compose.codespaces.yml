@@ -1,0 +1,74 @@
+# Codespaces overlay: fit the stack into 16 GB.
+#
+# Not used on a laptop. .devcontainer/devcontainer.json sets
+# COMPOSE_FILE=docker-compose.yml:docker-compose.codespaces.yml so every
+# `task` and `docker compose` call inside a Codespace picks it up.
+#
+# Why it is needed. The largest machine available to this repo is 4 cores /
+# 16 GB / 32 GB. At laptop defaults the stack does not fit:
+#
+#   * Trino's image sets -XX:MaxRAMPercentage=80 and compose puts no limit on
+#     the container, so the JVM sizes itself against the whole host. Measured
+#     at 13.2 GB on a 94 GB machine; on a 16 GB box it would take ~12.8 GB and
+#     leave nothing for Flink's reservation.
+#   * Flink reserves 6 GB outright (2 GB jobmanager + 4 GB taskmanager).
+#
+# A cgroup limit alone is not enough for Flink: it sizes from its own
+# `*.memory.process.size` property and gets OOM-killed if that exceeds the
+# limit. So both move together, and the FLINK_PROPERTIES blocks are repeated
+# in full because compose replaces an environment value rather than merging it.
+#
+# Budget, against 16 GB with ~2 GB left for the VS Code server and the OS:
+#   trino 4g · flink-tm 3g · flink-jm 1.5g · polaris 1g · librechat 1g
+#   litellm 768m · superset 1g · mongodb 512m · postgres 256m ×2
+#   mcp servers 256m ×3  =  ~14 GB
+services:
+  trino:
+    mem_limit: 4g
+
+  flink-jobmanager:
+    mem_limit: 1536m
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 1280m
+
+  flink-taskmanager:
+    mem_limit: 3g
+    environment:
+      # Four slots in 2560m is tight but the ingest job is IO-bound, not
+      # memory-bound; dropping to 2 slots halves ingest throughput instead.
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+        taskmanager.memory.process.size: 2560m
+
+  polaris:
+    mem_limit: 1g
+
+  superset:
+    mem_limit: 1g
+
+  librechat:
+    mem_limit: 1g
+
+  litellm:
+    mem_limit: 768m
+
+  mongodb:
+    mem_limit: 512m
+
+  polaris-postgres:
+    mem_limit: 256m
+
+  litellm-postgres:
+    mem_limit: 256m
+
+  mcp-server:
+    mem_limit: 256m
+
+  trino-mcp:
+    mem_limit: 256m
+
+  superset-mcp:
+    mem_limit: 256m
