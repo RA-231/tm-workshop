@@ -281,7 +281,10 @@ services:
       SUPERSET_USER: admin
       SUPERSET_PASSWORD: admin
       SUPERSET_DB_NAME: "Trino (Iceberg telemetry)"
-      SUPERSET_PUBLIC_URL: http://localhost:8088
+      # The URL superset-mcp hands back to the agent as a chart link, so it
+      # has to be reachable from the browser. In a Codespace that is the
+      # forwarded https host, which .devcontainer/post-create.sh writes to .env.
+      SUPERSET_PUBLIC_URL: ${SUPERSET_PUBLIC_URL:-http://localhost:8088}
       SUPERSET_SCHEMA: esa_adb
     depends_on:
       - superset

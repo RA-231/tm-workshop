@@ -1,0 +1,68 @@
+// Run the workshop in GitHub Codespaces instead of on a laptop.
+//
+// Why: the slow part of local setup is pulling ~16 GB of container images, and
+// at a conference every attendee pulls them at once over the same wifi. A
+// Codespace pulls over GitHub's network, and a prebuild bakes the images into
+// the snapshot so attendees pull nothing at session time. See issue #7.
+{
+  "name": "Space Telemetry Workshop",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "features": {
+    // The workshop *is* a compose stack, so the container needs its own daemon.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    }
+  },
+
+  // Measured on a machine with the full stack built (2026-10-05):
+  //   images       ~16 GB   (11.5 GB pulled + 4.7 GB built locally)
+  //   data/raw     139 MB   small ESA set
+  //   data/prepared 2.3 GB  written by `task data:prepare`
+  //   volumes      ~573 MB  Garage warehouse, Polaris + LiteLLM PG, Mongo
+  // That is ~19 GB before the devcontainer's own base layers, which does not
+  // leave workable headroom on a 32 GB disk -- hence 64 GB. Flink alone
+  // reserves 6 GB of RAM (docker-compose.yml:125,142) across 17 services.
+  // Storage of 64 GB selects the 8-core machine; see issue #7 for the cost.
+  "hostRequirements": {
+    "cpus": 8,
+    "memory": "32gb",
+    "storage": "64gb"
+  },
+
+  // Lifecycle, and which hooks a prebuild actually runs:
+  //   onCreateCommand      -- runs in prebuild. No Docker (see warm-images.sh).
+  //   updateContentCommand -- runs in prebuild. Last chance to fill the snapshot.
+  //   postCreateCommand    -- does NOT run in prebuild; runs per codespace.
+  "onCreateCommand": "bash .devcontainer/on-create.sh",
+  "updateContentCommand": "bash .devcontainer/warm-images.sh",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "forwardPorts": [4321, 8080, 8081, 8088, 8181, 3900, 3080, 4000, 8000, 8001, 8002],
+
+  "portsAttributes": {
+    "4321": { "label": "Docs + service links", "onAutoForward": "openPreview" },
+    "8080": { "label": "Trino", "onAutoForward": "silent" },
+    "8081": { "label": "Flink UI", "onAutoForward": "silent" },
+    "8088": { "label": "Superset (admin/admin)", "onAutoForward": "silent" },
+    "8181": { "label": "Polaris catalog API", "onAutoForward": "silent" },
+    "3900": { "label": "Garage S3 API", "onAutoForward": "silent" },
+    "3080": { "label": "LibreChat", "onAutoForward": "silent" },
+    "4000": { "label": "LiteLLM", "onAutoForward": "silent" },
+    "8000": { "label": "MCP: esa-adb", "onAutoForward": "silent" },
+    "8001": { "label": "MCP: trino", "onAutoForward": "silent" },
+    "8002": { "label": "MCP: superset", "onAutoForward": "silent" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-containers",
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+
+  "remoteUser": "vscode"
+}
